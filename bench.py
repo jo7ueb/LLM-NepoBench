@@ -278,7 +278,9 @@ def extract_failure_reason(rc: int, log: str, lang: str) -> Tuple[str, str]:
         if "cannot find module" in log_lower:
             return "LLM", "モジュールが見つからない"
         if "is not a function" in log_lower:
-            return "LLM", "関数でないものを呼び出し"
+            return "LLM", "関数をexportしていない"
+        if "is not defined" in log_lower:
+            return "LLM", "exportしていない"
         if "unexpected token" in log_lower:
             return "LLM", "構文エラー"
         # Go
@@ -356,7 +358,7 @@ def main() -> None:
             resp = client.chat.completions.create(
                 model=args.model,
                 messages=[
-                    {"role": "system", "content": f"You are an expert {prob.lang} developer. Output code only. Do NOT use external APIs or LLM libraries. Use only standard library and built-in features."},
+                    {"role": "system", "content": f"You are an expert {prob.lang} developer. Output code only. Do NOT use external APIs or LLM libraries. Use only standard library and built-in features. All functions and classes MUST be exported."},
                     {"role": "user", "content": prob.prompt},
                 ],
                 temperature=args.temperature,
