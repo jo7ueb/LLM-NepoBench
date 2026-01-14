@@ -2018,3 +2018,299 @@
           expect(lock).toBeNull(); // still locked
         });
       });
+# =============================================================================
+# TypeScript固有の強み: 高度な型システム
+# =============================================================================
+
+- id: ts_conditional_types
+  lang: typescript
+  prompt: |
+    Conditional Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    - Flatten<T> - 配列なら要素型、そうでなければT
+    - MyNonNullable<T> - nullとundefinedを除去（自作）
+    - ReturnTypeOf<T> - 関数の戻り値型を取得（自作）
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { Flatten, MyNonNullable, ReturnTypeOf } from "../solution";
+      describe("Conditional Types", () => {
+        it("Flatten works", () => {
+          type A = Flatten<string[]>;
+          type B = Flatten<number>;
+          const a: A = "test";
+          const b: B = 42;
+          expect(typeof a).toBe("string");
+          expect(typeof b).toBe("number");
+        });
+        it("MyNonNullable works", () => {
+          type A = MyNonNullable<string | null | undefined>;
+          const a: A = "test";
+          expect(a).toBe("test");
+        });
+        it("ReturnTypeOf works", () => {
+          type Fn = () => { id: number };
+          type R = ReturnTypeOf<Fn>;
+          const r: R = { id: 1 };
+          expect(r.id).toBe(1);
+        });
+      });
+
+- id: ts_mapped_types
+  lang: typescript
+  prompt: |
+    Mapped Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    - MyReadonly<T> - 全プロパティをreadonly（自作）
+    - MyPartial<T> - 全プロパティをoptional（自作）
+    - MyRequired<T> - 全プロパティを必須（自作）
+    - Mutable<T> - readonlyを除去
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { MyReadonly, MyPartial, MyRequired, Mutable } from "../solution";
+      describe("Mapped Types", () => {
+        it("MyReadonly works", () => {
+          type User = { name: string };
+          type RO = MyReadonly<User>;
+          const u: RO = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("MyPartial works", () => {
+          type User = { name: string; age: number };
+          type P = MyPartial<User>;
+          const u: P = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("MyRequired works", () => {
+          type User = { name?: string };
+          type R = MyRequired<User>;
+          const u: R = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("Mutable works", () => {
+          type RO = { readonly name: string };
+          type M = Mutable<RO>;
+          const u: M = { name: "test" };
+          u.name = "changed";
+          expect(u.name).toBe("changed");
+        });
+      });
+
+- id: ts_template_literal
+  lang: typescript
+  prompt: |
+    Template Literal Typesを使った型を実装。解説不要、コードのみ。
+    - EventName<T> - "on" + Capitalize<T> (例: "click" → "onClick")
+    - toEventName(event: string): string
+    - PathParams<T> - URLパスからパラメータ抽出
+    - extractParams(pattern: string, path: string): Record<string, string>
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { EventName, PathParams } from "../solution";
+      import { toEventName, extractParams } from "../solution";
+      describe("Template Literal Types", () => {
+        it("EventName type", () => {
+          type E = EventName<"click">;
+          const e: E = "onClick";
+          expect(e).toBe("onClick");
+        });
+        it("toEventName function", () => {
+          expect(toEventName("click")).toBe("onClick");
+          expect(toEventName("mouseOver")).toBe("onMouseOver");
+        });
+        it("extractParams function", () => {
+          const params = extractParams("/users/:id", "/users/123");
+          expect(params.id).toBe("123");
+        });
+      });
+
+- id: ts_discriminated_union
+  lang: typescript
+  prompt: |
+    Discriminated Unionを使ったパターンマッチングを実装。解説不要、コードのみ。
+    - type Action = { type: "INCREMENT" } | { type: "DECREMENT" } | { type: "SET"; value: number }
+    - reducer(state: number, action: Action): number
+    - increment(), decrement(), set(value) アクションクリエーター
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { reducer, increment, decrement, set, type Action } from "../solution";
+      describe("Discriminated Union", () => {
+        it("handles INCREMENT", () => {
+          expect(reducer(0, increment())).toBe(1);
+        });
+        it("handles DECREMENT", () => {
+          expect(reducer(5, decrement())).toBe(4);
+        });
+        it("handles SET", () => {
+          expect(reducer(0, set(10))).toBe(10);
+        });
+        it("type safety", () => {
+          const action: Action = { type: "SET", value: 42 };
+          expect(reducer(0, action)).toBe(42);
+        });
+      });
+
+# React風パターン
+- id: ts_react_hooks
+  lang: typescript
+  prompt: |
+    React風のカスタムフックを実装（Reactなし）。解説不要、コードのみ。
+    - useState<T>(initial: T): [T, (v: T | ((prev: T) => T)) => void]
+    - useMemo<T>(factory: () => T, deps: any[]): T
+    - resetHooks(): void
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect, beforeEach } from "vitest";
+      import { useState, useMemo, resetHooks } from "../solution";
+      describe("React Hooks", () => {
+        beforeEach(() => resetHooks());
+        it("useState returns state and setter", () => {
+          const [count, setCount] = useState(0);
+          expect(count).toBe(0);
+          setCount(5);
+          const [count2] = useState(0);
+          expect(count2).toBe(5);
+        });
+        it("useState with updater function", () => {
+          const [count, setCount] = useState(10);
+          setCount(prev => prev + 1);
+          const [count2] = useState(0);
+          expect(count2).toBe(11);
+        });
+        it("useMemo caches value", () => {
+          let calls = 0;
+          const value = useMemo(() => { calls++; return 42; }, [1]);
+          const value2 = useMemo(() => { calls++; return 42; }, [1]);
+          expect(calls).toBe(1);
+        });
+      });
+
+# Express風パターン
+- id: ts_express_middleware
+  lang: typescript
+  prompt: |
+    Express風のミドルウェアシステムを実装。解説不要、コードのみ。
+    - createApp() でアプリ作成
+    - app.use(middleware), app.get(path, handler), app.post(path, handler)
+    - app.handle(req) でリクエスト処理
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { createApp } from "../solution";
+      describe("Express-like App", () => {
+        it("handles GET request", async () => {
+          const app = createApp();
+          app.get("/users", (req, res) => { res.json([{ id: 1 }]); });
+          const res = await app.handle({ method: "GET", path: "/users" });
+          expect(res.body).toEqual([{ id: 1 }]);
+        });
+        it("extracts params", async () => {
+          const app = createApp();
+          app.get("/users/:id", (req, res) => { res.json({ id: req.params.id }); });
+          const res = await app.handle({ method: "GET", path: "/users/123" });
+          expect(res.body.id).toBe("123");
+        });
+        it("runs middleware", async () => {
+          const app = createApp();
+          const logs: string[] = [];
+          app.use((req, res, next) => { logs.push("m1"); next(); });
+          app.get("/test", (req, res) => { res.json({ ok: true }); });
+          await app.handle({ method: "GET", path: "/test" });
+          expect(logs).toContain("m1");
+        });
+      });
+
+# Zod風バリデーション
+- id: ts_validation_schema
+  lang: typescript
+  prompt: |
+    Zod風のバリデーションスキーマを実装。解説不要、コードのみ。
+    - z.string(), z.number(), z.boolean()
+    - z.object({...}), z.array(schema)
+    - .optional(), .parse(data)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { z } from "../solution";
+      describe("Validation Schema", () => {
+        it("validates string", () => {
+          const schema = z.string();
+          expect(schema.parse("hello")).toBe("hello");
+          expect(() => schema.parse(123)).toThrow();
+        });
+        it("validates object", () => {
+          const schema = z.object({ name: z.string(), age: z.number() });
+          const result = schema.parse({ name: "Alice", age: 30 });
+          expect(result.name).toBe("Alice");
+        });
+        it("validates array", () => {
+          const schema = z.array(z.number());
+          expect(schema.parse([1, 2, 3])).toEqual([1, 2, 3]);
+        });
+        it("handles optional", () => {
+          const schema = z.object({ name: z.string(), age: z.number().optional() });
+          const result = schema.parse({ name: "Bob" });
+          expect(result.name).toBe("Bob");
+        });
+      });
+
+# バグ修正問題
+- id: ts_this_binding_bug
+  lang: typescript
+  prompt: |
+    thisバインディングバグを修正。解説不要、コードのみ。
+    問題: クラスメソッドをコールバックとして渡すとthisが失われる
+    class Counter { count = 0; increment() { this.count++; } getCount() { return this.count; } }
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Counter } from "../solution";
+      describe("Counter this binding", () => {
+        it("works with direct call", () => {
+          const c = new Counter();
+          c.increment();
+          expect(c.getCount()).toBe(1);
+        });
+        it("works as callback", async () => {
+          const c = new Counter();
+          await new Promise<void>(resolve => {
+            setTimeout(() => { c.increment(); resolve(); }, 0);
+          });
+          expect(c.getCount()).toBe(1);
+        });
+        it("works with array methods", () => {
+          const c = new Counter();
+          [1, 2, 3].forEach(c.increment);
+          expect(c.getCount()).toBe(3);
+        });
+      });
+
+- id: ts_equality_bug
+  lang: typescript
+  prompt: |
+    等価性チェックのバグを修正。解説不要、コードのみ。
+    問題: オブジェクトの等価性を正しく比較できない
+    元コード: function isEqual(a: any, b: any) { return a == b; }
+    期待: 深い比較で正しく判定
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { isEqual } from "../solution";
+      describe("isEqual", () => {
+        it("compares primitives", () => {
+          expect(isEqual(1, 1)).toBe(true);
+          expect(isEqual(1, 2)).toBe(false);
+        });
+        it("compares objects", () => {
+          expect(isEqual({ a: 1 }, { a: 1 })).toBe(true);
+          expect(isEqual({ a: 1 }, { a: 2 })).toBe(false);
+        });
+        it("compares nested objects", () => {
+          expect(isEqual({ a: { b: 1 } }, { a: { b: 1 } })).toBe(true);
+        });
+        it("compares arrays", () => {
+          expect(isEqual([1, 2], [1, 2])).toBe(true);
+          expect(isEqual([1, 2], [1, 3])).toBe(false);
+        });
+      });

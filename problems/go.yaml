@@ -1,3 +1,18 @@
+# =============================================================================
+# Go ベンチマーク問題集
+# Goらしい並行処理、エラーハンドリング、interface設計を評価
+#
+# 難易度レベル:
+#   Level 1 (★☆☆☆) - 基本文法、シンプルな並行処理
+#   Level 2 (★★☆☆) - channel活用、context、エラー処理
+#   Level 3 (★★★☆) - 設計パターン、sync、generics
+#   Level 4 (★★★★) - 高度な並行処理、実務レベル設計
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 基本問題: Interface
+# -----------------------------------------------------------------------------
+
 - id: go_polymorphism
   lang: go
   prompt: |
@@ -21,6 +36,48 @@
           t.Fatalf("empty speak")
         }
       }
+
+- id: go_stringer
+  lang: go
+  prompt: |
+    fmt.Stringer インターフェースを実装してください。
+    解説不要。solution.go のコードのみ出力。package bench。
+
+    要件:
+    - type Person struct { Name string; Age int }
+    - String() string で "Name (Age歳)" 形式で返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "fmt"
+        "strings"
+        "testing"
+      )
+
+      func TestPersonStringer(t *testing.T) {
+        p := Person{Name: "田中", Age: 30}
+        s := fmt.Sprintf("%s", p)
+        if !strings.Contains(s, "田中") {
+          t.Errorf("expected name in string: %s", s)
+        }
+        if !strings.Contains(s, "30") {
+          t.Errorf("expected age in string: %s", s)
+        }
+      }
+
+      func TestPersonStringerYoung(t *testing.T) {
+        p := Person{Name: "Alice", Age: 20}
+        s := p.String()
+        if !strings.Contains(s, "Alice") || !strings.Contains(s, "20") {
+          t.Errorf("unexpected: %s", s)
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# 基本問題: 並行処理
+# -----------------------------------------------------------------------------
 
 - id: go_concurrent_map
   lang: go
@@ -49,5 +106,1516 @@
           if out[i] != exp[i] {
             t.Fatalf("out[%d]=%d exp=%d", i, out[i], exp[i])
           }
+        }
+      }
+
+      func TestSquaresEmpty(t *testing.T) {
+        out := Squares([]int{})
+        if len(out) != 0 {
+          t.Fatalf("expected empty, got %d", len(out))
+        }
+      }
+
+- id: go_channel_pipeline
+  lang: go
+  prompt: |
+    channelを使ったパイプライン処理を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Generator(nums ...int) <-chan int: 数値をchannelに送信
+    - Double(in <-chan int) <-chan int: 入力を2倍にして出力
+    - Sum(in <-chan int) int: 全て足し合わせて返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestPipeline(t *testing.T) {
+        gen := Generator(1, 2, 3, 4, 5)
+        doubled := Double(gen)
+        sum := Sum(doubled)
+        if sum != 30 { // (1+2+3+4+5)*2 = 30
+          t.Fatalf("expected 30, got %d", sum)
+        }
+      }
+
+      func TestPipelineEmpty(t *testing.T) {
+        gen := Generator()
+        doubled := Double(gen)
+        sum := Sum(doubled)
+        if sum != 0 {
+          t.Fatalf("expected 0, got %d", sum)
+        }
+      }
+
+      func TestPipelineSingle(t *testing.T) {
+        gen := Generator(10)
+        doubled := Double(gen)
+        sum := Sum(doubled)
+        if sum != 20 {
+          t.Fatalf("expected 20, got %d", sum)
+        }
+      }
+
+- id: go_fan_out_in
+  lang: go
+  prompt: |
+    Fan-out/Fan-inパターンを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - FanOut(in <-chan int, n int) []<-chan int: 入力を n 個のworkerに分配
+    - FanIn(channels ...<-chan int) <-chan int: 複数channelを1つに統合
+    - 結果の順序は問わない
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sort"
+        "testing"
+      )
+
+      func TestFanOutIn(t *testing.T) {
+        in := make(chan int, 5)
+        for i := 1; i <= 5; i++ {
+          in <- i
+        }
+        close(in)
+
+        outs := FanOut(in, 3)
+        if len(outs) != 3 {
+          t.Fatalf("expected 3 channels, got %d", len(outs))
+        }
+
+        merged := FanIn(outs...)
+        var results []int
+        for v := range merged {
+          results = append(results, v)
+        }
+
+        sort.Ints(results)
+        expected := []int{1, 2, 3, 4, 5}
+        if len(results) != len(expected) {
+          t.Fatalf("expected %d items, got %d", len(expected), len(results))
+        }
+        for i, v := range expected {
+          if results[i] != v {
+            t.Errorf("mismatch at %d: got %d, want %d", i, results[i], v)
+          }
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# 基本問題: エラー処理
+# -----------------------------------------------------------------------------
+
+- id: go_custom_error
+  lang: go
+  prompt: |
+    カスタムエラー型を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - type ValidationError struct { Field string; Message string }
+    - Error() string を実装
+    - Validate(name string, age int) error: name空なら ValidationError{Field:"name",...}
+      age < 0 なら ValidationError{Field:"age",...}
+      正常なら nil
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+      )
+
+      func TestValidateOK(t *testing.T) {
+        err := Validate("Alice", 20)
+        if err != nil {
+          t.Fatalf("expected nil, got %v", err)
+        }
+      }
+
+      func TestValidateEmptyName(t *testing.T) {
+        err := Validate("", 20)
+        if err == nil {
+          t.Fatal("expected error")
+        }
+        var ve *ValidationError
+        if !errors.As(err, &ve) {
+          t.Fatal("expected ValidationError")
+        }
+        if ve.Field != "name" {
+          t.Errorf("expected field=name, got %s", ve.Field)
+        }
+      }
+
+      func TestValidateNegativeAge(t *testing.T) {
+        err := Validate("Bob", -1)
+        if err == nil {
+          t.Fatal("expected error")
+        }
+        var ve *ValidationError
+        if !errors.As(err, &ve) {
+          t.Fatal("expected ValidationError")
+        }
+        if ve.Field != "age" {
+          t.Errorf("expected field=age, got %s", ve.Field)
+        }
+      }
+
+- id: go_error_wrap
+  lang: go
+  prompt: |
+    エラーのラップとアンラップを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - var ErrNotFound = errors.New("not found")
+    - GetUser(id int) (string, error): id <= 0 なら fmt.Errorf でErrNotFoundをラップして返す
+      id == 1 なら "Alice", id == 2 なら "Bob", それ以外は ErrNotFound
+    - IsNotFound(err error) bool: errors.Is でErrNotFoundかどうか判定
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+      )
+
+      func TestGetUserFound(t *testing.T) {
+        name, err := GetUser(1)
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+        if name != "Alice" {
+          t.Errorf("expected Alice, got %s", name)
+        }
+      }
+
+      func TestGetUserNotFound(t *testing.T) {
+        _, err := GetUser(999)
+        if err == nil {
+          t.Fatal("expected error")
+        }
+        if !errors.Is(err, ErrNotFound) {
+          t.Error("expected ErrNotFound")
+        }
+        if !IsNotFound(err) {
+          t.Error("IsNotFound should return true")
+        }
+      }
+
+      func TestGetUserInvalidID(t *testing.T) {
+        _, err := GetUser(0)
+        if err == nil {
+          t.Fatal("expected error")
+        }
+        if !IsNotFound(err) {
+          t.Error("IsNotFound should return true for wrapped error")
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# 基本問題: データ構造
+# -----------------------------------------------------------------------------
+
+- id: go_stack
+  lang: go
+  prompt: |
+    スタック(LIFO)を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - type Stack[T any] struct {...}
+    - Push(T), Pop() (T, bool), Peek() (T, bool), Len() int, IsEmpty() bool
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestStackPushPop(t *testing.T) {
+        s := &Stack[int]{}
+        s.Push(1)
+        s.Push(2)
+        s.Push(3)
+        v, ok := s.Pop()
+        if !ok || v != 3 {
+          t.Errorf("expected 3, got %d", v)
+        }
+        v, ok = s.Pop()
+        if !ok || v != 2 {
+          t.Errorf("expected 2, got %d", v)
+        }
+      }
+
+      func TestStackPeek(t *testing.T) {
+        s := &Stack[string]{}
+        s.Push("a")
+        v, ok := s.Peek()
+        if !ok || v != "a" {
+          t.Errorf("expected a, got %s", v)
+        }
+        if s.Len() != 1 {
+          t.Errorf("peek should not remove")
+        }
+      }
+
+      func TestStackEmpty(t *testing.T) {
+        s := &Stack[int]{}
+        if !s.IsEmpty() {
+          t.Error("should be empty")
+        }
+        _, ok := s.Pop()
+        if ok {
+          t.Error("pop from empty should return false")
+        }
+      }
+
+- id: go_queue
+  lang: go
+  prompt: |
+    キュー(FIFO)を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - type Queue[T any] struct {...}
+    - Enqueue(T), Dequeue() (T, bool), Peek() (T, bool), Len() int, IsEmpty() bool
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestQueueFIFO(t *testing.T) {
+        q := &Queue[int]{}
+        q.Enqueue(1)
+        q.Enqueue(2)
+        q.Enqueue(3)
+        v, ok := q.Dequeue()
+        if !ok || v != 1 {
+          t.Errorf("expected 1, got %d", v)
+        }
+        v, ok = q.Dequeue()
+        if !ok || v != 2 {
+          t.Errorf("expected 2, got %d", v)
+        }
+      }
+
+      func TestQueuePeek(t *testing.T) {
+        q := &Queue[string]{}
+        q.Enqueue("first")
+        v, ok := q.Peek()
+        if !ok || v != "first" {
+          t.Errorf("expected first, got %s", v)
+        }
+        if q.Len() != 1 {
+          t.Error("peek should not remove")
+        }
+      }
+
+      func TestQueueEmpty(t *testing.T) {
+        q := &Queue[int]{}
+        if !q.IsEmpty() {
+          t.Error("should be empty")
+        }
+        _, ok := q.Dequeue()
+        if ok {
+          t.Error("dequeue from empty should return false")
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# 基本問題: 関数型スタイル
+# -----------------------------------------------------------------------------
+
+- id: go_map_filter_reduce
+  lang: go
+  prompt: |
+    ジェネリクスで Map/Filter/Reduce を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Map[T, U any](slice []T, fn func(T) U) []U
+    - Filter[T any](slice []T, predicate func(T) bool) []T
+    - Reduce[T, U any](slice []T, initial U, fn func(U, T) U) U
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestMap(t *testing.T) {
+        nums := []int{1, 2, 3}
+        doubled := Map(nums, func(n int) int { return n * 2 })
+        expected := []int{2, 4, 6}
+        for i, v := range expected {
+          if doubled[i] != v {
+            t.Errorf("Map: expected %d, got %d", v, doubled[i])
+          }
+        }
+      }
+
+      func TestFilter(t *testing.T) {
+        nums := []int{1, 2, 3, 4, 5}
+        evens := Filter(nums, func(n int) bool { return n%2 == 0 })
+        if len(evens) != 2 || evens[0] != 2 || evens[1] != 4 {
+          t.Errorf("Filter: expected [2,4], got %v", evens)
+        }
+      }
+
+      func TestReduce(t *testing.T) {
+        nums := []int{1, 2, 3, 4}
+        sum := Reduce(nums, 0, func(acc, n int) int { return acc + n })
+        if sum != 10 {
+          t.Errorf("Reduce: expected 10, got %d", sum)
+        }
+      }
+
+      func TestMapToString(t *testing.T) {
+        nums := []int{1, 2}
+        strs := Map(nums, func(n int) string { return string(rune('0' + n)) })
+        if strs[0] != "1" || strs[1] != "2" {
+          t.Errorf("Map to string failed: %v", strs)
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# Level 1: 基本的な並行処理
+# -----------------------------------------------------------------------------
+
+- id: go_agent_L1_worker
+  lang: go
+  prompt: |
+    ワーカープールを実装。解説不要。solution.go。package bench。
+
+    要件を推測して実装してください:
+    - 複数のgoroutineでジョブを処理
+    - ジョブの追加と結果の取得
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sort"
+        "testing"
+      )
+
+      func TestWorkerPool(t *testing.T) {
+        pool := NewWorkerPool(3)
+        pool.Start()
+
+        for i := 1; i <= 5; i++ {
+          pool.Submit(i)
+        }
+
+        results := pool.Results(5)
+        sort.Ints(results)
+        expected := []int{1, 4, 9, 16, 25} // squared
+        for i, v := range expected {
+          if results[i] != v {
+            t.Errorf("expected %d, got %d", v, results[i])
+          }
+        }
+
+        pool.Stop()
+      }
+
+- id: go_agent_L1_timeout
+  lang: go
+  prompt: |
+    タイムアウト付き処理を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - DoWithTimeout(fn func() (string, error), timeout time.Duration) (string, error)
+    - タイムアウト時は適切なエラーを返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+        "time"
+      )
+
+      func TestDoWithTimeoutSuccess(t *testing.T) {
+        result, err := DoWithTimeout(func() (string, error) {
+          return "ok", nil
+        }, time.Second)
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+        if result != "ok" {
+          t.Errorf("expected ok, got %s", result)
+        }
+      }
+
+      func TestDoWithTimeoutTimeout(t *testing.T) {
+        _, err := DoWithTimeout(func() (string, error) {
+          time.Sleep(time.Second)
+          return "slow", nil
+        }, 50*time.Millisecond)
+        if err == nil {
+          t.Fatal("expected timeout error")
+        }
+      }
+
+      func TestDoWithTimeoutError(t *testing.T) {
+        expectedErr := errors.New("fn error")
+        _, err := DoWithTimeout(func() (string, error) {
+          return "", expectedErr
+        }, time.Second)
+        if !errors.Is(err, expectedErr) {
+          t.Errorf("expected fn error, got %v", err)
+        }
+      }
+
+- id: go_agent_L1_cache
+  lang: go
+  prompt: |
+    スレッドセーフなキャッシュを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Get/Set/Delete
+    - 並行アクセスに対応
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sync"
+        "testing"
+      )
+
+      func TestCacheBasic(t *testing.T) {
+        c := NewCache[string, int]()
+        c.Set("a", 1)
+        v, ok := c.Get("a")
+        if !ok || v != 1 {
+          t.Errorf("expected 1, got %d", v)
+        }
+      }
+
+      func TestCacheDelete(t *testing.T) {
+        c := NewCache[string, int]()
+        c.Set("a", 1)
+        c.Delete("a")
+        _, ok := c.Get("a")
+        if ok {
+          t.Error("expected not found after delete")
+        }
+      }
+
+      func TestCacheConcurrent(t *testing.T) {
+        c := NewCache[int, int]()
+        var wg sync.WaitGroup
+        for i := 0; i < 100; i++ {
+          wg.Add(1)
+          go func(n int) {
+            defer wg.Done()
+            c.Set(n, n*n)
+            c.Get(n)
+          }(i)
+        }
+        wg.Wait()
+      }
+
+- id: go_agent_L1_rate_limiter
+  lang: go
+  prompt: |
+    レートリミッターを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 1秒あたりの許可リクエスト数を制限
+    - Allow() bool でリクエスト許可を判定
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "testing"
+        "time"
+      )
+
+      func TestRateLimiter(t *testing.T) {
+        rl := NewRateLimiter(5, time.Second) // 5 req/sec
+
+        allowed := 0
+        for i := 0; i < 10; i++ {
+          if rl.Allow() {
+            allowed++
+          }
+        }
+
+        if allowed > 5 {
+          t.Errorf("expected max 5 allowed, got %d", allowed)
+        }
+        if allowed < 1 {
+          t.Error("expected at least 1 allowed")
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# Level 2: Context, 高度なエラー処理
+# -----------------------------------------------------------------------------
+
+- id: go_agent_L2_context_cancel
+  lang: go
+  prompt: |
+    context.Contextを使ったキャンセレーションを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - LongTask(ctx context.Context) (string, error)
+    - contextがキャンセルされたら即座に終了
+    - 正常終了なら "completed" を返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "context"
+        "testing"
+        "time"
+      )
+
+      func TestLongTaskComplete(t *testing.T) {
+        ctx := context.Background()
+        result, err := LongTask(ctx)
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+        if result != "completed" {
+          t.Errorf("expected completed, got %s", result)
+        }
+      }
+
+      func TestLongTaskCanceled(t *testing.T) {
+        ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+        defer cancel()
+
+        _, err := LongTask(ctx)
+        if err == nil {
+          t.Fatal("expected context error")
+        }
+      }
+
+- id: go_agent_L2_retry
+  lang: go
+  prompt: |
+    リトライ機能を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Retry(fn func() error, maxAttempts int, delay time.Duration) error
+    - 指数バックオフ
+    - 最大リトライ回数を超えたら最後のエラーを返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+        "time"
+      )
+
+      func TestRetrySuccess(t *testing.T) {
+        attempts := 0
+        err := Retry(func() error {
+          attempts++
+          if attempts < 3 {
+            return errors.New("fail")
+          }
+          return nil
+        }, 5, 10*time.Millisecond)
+
+        if err != nil {
+          t.Fatalf("expected success, got %v", err)
+        }
+        if attempts != 3 {
+          t.Errorf("expected 3 attempts, got %d", attempts)
+        }
+      }
+
+      func TestRetryExhausted(t *testing.T) {
+        attempts := 0
+        err := Retry(func() error {
+          attempts++
+          return errors.New("always fails")
+        }, 3, 10*time.Millisecond)
+
+        if err == nil {
+          t.Fatal("expected error after exhausted retries")
+        }
+        if attempts != 3 {
+          t.Errorf("expected 3 attempts, got %d", attempts)
+        }
+      }
+
+- id: go_agent_L2_semaphore
+  lang: go
+  prompt: |
+    セマフォを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 同時実行数を制限
+    - Acquire() / Release()
+    - TryAcquire() bool
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sync"
+        "sync/atomic"
+        "testing"
+        "time"
+      )
+
+      func TestSemaphore(t *testing.T) {
+        sem := NewSemaphore(2)
+        var concurrent int32
+        var maxConcurrent int32
+        var wg sync.WaitGroup
+
+        for i := 0; i < 5; i++ {
+          wg.Add(1)
+          go func() {
+            defer wg.Done()
+            sem.Acquire()
+            defer sem.Release()
+
+            c := atomic.AddInt32(&concurrent, 1)
+            for {
+              old := atomic.LoadInt32(&maxConcurrent)
+              if c <= old || atomic.CompareAndSwapInt32(&maxConcurrent, old, c) {
+                break
+              }
+            }
+            time.Sleep(50 * time.Millisecond)
+            atomic.AddInt32(&concurrent, -1)
+          }()
+        }
+
+        wg.Wait()
+        if maxConcurrent > 2 {
+          t.Errorf("max concurrent exceeded: %d", maxConcurrent)
+        }
+      }
+
+      func TestSemaphoreTryAcquire(t *testing.T) {
+        sem := NewSemaphore(1)
+        sem.Acquire()
+        if sem.TryAcquire() {
+          t.Error("TryAcquire should return false when full")
+        }
+        sem.Release()
+        if !sem.TryAcquire() {
+          t.Error("TryAcquire should return true when available")
+        }
+      }
+
+- id: go_agent_L2_pubsub
+  lang: go
+  prompt: |
+    Pub/Subシステムを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Subscribe(topic string) <-chan string
+    - Publish(topic string, msg string)
+    - Unsubscribe
+    - スレッドセーフ
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "testing"
+        "time"
+      )
+
+      func TestPubSubBasic(t *testing.T) {
+        ps := NewPubSub()
+        ch := ps.Subscribe("news")
+
+        go func() {
+          time.Sleep(10 * time.Millisecond)
+          ps.Publish("news", "hello")
+        }()
+
+        select {
+        case msg := <-ch:
+          if msg != "hello" {
+            t.Errorf("expected hello, got %s", msg)
+          }
+        case <-time.After(time.Second):
+          t.Fatal("timeout waiting for message")
+        }
+      }
+
+      func TestPubSubMultipleSubscribers(t *testing.T) {
+        ps := NewPubSub()
+        ch1 := ps.Subscribe("topic")
+        ch2 := ps.Subscribe("topic")
+
+        ps.Publish("topic", "msg")
+
+        for _, ch := range []<-chan string{ch1, ch2} {
+          select {
+          case msg := <-ch:
+            if msg != "msg" {
+              t.Errorf("expected msg, got %s", msg)
+            }
+          case <-time.After(time.Second):
+            t.Fatal("timeout")
+          }
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# Level 3: 設計パターン
+# -----------------------------------------------------------------------------
+
+- id: go_agent_L3_circuit_breaker
+  lang: go
+  prompt: |
+    サーキットブレーカーを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - CLOSED/OPEN/HALF_OPEN状態
+    - 連続失敗でOPEN
+    - タイムアウト後HALF_OPEN
+    - 成功でCLOSED
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+        "time"
+      )
+
+      func TestCircuitBreakerClosed(t *testing.T) {
+        cb := NewCircuitBreaker(3, 100*time.Millisecond)
+        err := cb.Call(func() error { return nil })
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+        if cb.State() != StateClosed {
+          t.Errorf("expected CLOSED, got %v", cb.State())
+        }
+      }
+
+      func TestCircuitBreakerOpens(t *testing.T) {
+        cb := NewCircuitBreaker(2, 100*time.Millisecond)
+        testErr := errors.New("fail")
+
+        for i := 0; i < 2; i++ {
+          cb.Call(func() error { return testErr })
+        }
+
+        if cb.State() != StateOpen {
+          t.Errorf("expected OPEN after failures, got %v", cb.State())
+        }
+
+        err := cb.Call(func() error { return nil })
+        if err == nil {
+          t.Error("expected circuit open error")
+        }
+      }
+
+      func TestCircuitBreakerHalfOpen(t *testing.T) {
+        cb := NewCircuitBreaker(1, 50*time.Millisecond)
+        cb.Call(func() error { return errors.New("fail") })
+
+        time.Sleep(60 * time.Millisecond)
+
+        if cb.State() != StateHalfOpen {
+          t.Errorf("expected HALF_OPEN, got %v", cb.State())
+        }
+      }
+
+- id: go_agent_L3_pool
+  lang: go
+  prompt: |
+    コネクションプールを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 最大接続数の制限
+    - Get() でコネクション取得
+    - Put() で返却
+    - タイムアウト付きGet
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "context"
+        "testing"
+        "time"
+      )
+
+      func TestPoolBasic(t *testing.T) {
+        pool := NewPool(2)
+        c1, _ := pool.Get(context.Background())
+        c2, _ := pool.Get(context.Background())
+
+        if c1 == nil || c2 == nil {
+          t.Fatal("expected connections")
+        }
+
+        pool.Put(c1)
+        pool.Put(c2)
+      }
+
+      func TestPoolExhausted(t *testing.T) {
+        pool := NewPool(1)
+        c1, _ := pool.Get(context.Background())
+
+        ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+        defer cancel()
+
+        _, err := pool.Get(ctx)
+        if err == nil {
+          t.Error("expected timeout error")
+        }
+
+        pool.Put(c1)
+      }
+
+      func TestPoolReuse(t *testing.T) {
+        pool := NewPool(1)
+        c1, _ := pool.Get(context.Background())
+        pool.Put(c1)
+        c2, _ := pool.Get(context.Background())
+
+        if c1 != c2 {
+          t.Error("expected connection reuse")
+        }
+      }
+
+- id: go_agent_L3_state_machine
+  lang: go
+  prompt: |
+    状態マシンを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 状態と遷移の定義
+    - 無効な遷移の検出
+    - コールバック
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "testing"
+      )
+
+      func TestStateMachineTransition(t *testing.T) {
+        sm := NewStateMachine("idle")
+        sm.AddTransition("idle", "start", "running")
+        sm.AddTransition("running", "stop", "idle")
+
+        if sm.State() != "idle" {
+          t.Errorf("expected idle, got %s", sm.State())
+        }
+
+        err := sm.Fire("start")
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+        if sm.State() != "running" {
+          t.Errorf("expected running, got %s", sm.State())
+        }
+      }
+
+      func TestStateMachineInvalidTransition(t *testing.T) {
+        sm := NewStateMachine("idle")
+        sm.AddTransition("idle", "start", "running")
+
+        err := sm.Fire("stop") // invalid from idle
+        if err == nil {
+          t.Error("expected error for invalid transition")
+        }
+      }
+
+      func TestStateMachineCallback(t *testing.T) {
+        sm := NewStateMachine("idle")
+        sm.AddTransition("idle", "start", "running")
+
+        called := false
+        sm.OnEnter("running", func() { called = true })
+        sm.Fire("start")
+
+        if !called {
+          t.Error("expected callback to be called")
+        }
+      }
+
+- id: go_agent_L3_middleware
+  lang: go
+  prompt: |
+    ミドルウェアチェーンを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - Handler func(ctx *Context) error
+    - Use(middleware) でミドルウェア追加
+    - 順序通りに実行
+    - next()で次を呼び出し
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "testing"
+      )
+
+      func TestMiddlewareChain(t *testing.T) {
+        chain := NewChain()
+        order := []string{}
+
+        chain.Use(func(ctx *Context, next func() error) error {
+          order = append(order, "m1-before")
+          err := next()
+          order = append(order, "m1-after")
+          return err
+        })
+
+        chain.Use(func(ctx *Context, next func() error) error {
+          order = append(order, "m2")
+          return next()
+        })
+
+        chain.Handle(func(ctx *Context) error {
+          order = append(order, "handler")
+          return nil
+        })
+
+        chain.Execute(&Context{})
+
+        expected := []string{"m1-before", "m2", "handler", "m1-after"}
+        for i, v := range expected {
+          if order[i] != v {
+            t.Errorf("at %d: expected %s, got %s", i, v, order[i])
+          }
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# Level 4: 高度な実装
+# -----------------------------------------------------------------------------
+
+- id: go_agent_L4_event_sourcing
+  lang: go
+  prompt: |
+    イベントソーシングを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - イベントの記録
+    - イベントからの状態復元
+    - スナップショット
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestEventStore(t *testing.T) {
+        store := NewEventStore()
+        store.Append("account-1", Event{Type: "deposited", Data: 100})
+        store.Append("account-1", Event{Type: "withdrawn", Data: 30})
+
+        events := store.GetEvents("account-1")
+        if len(events) != 2 {
+          t.Fatalf("expected 2 events, got %d", len(events))
+        }
+      }
+
+      func TestBankAccountReconstruct(t *testing.T) {
+        events := []Event{
+          {Type: "deposited", Data: 100},
+          {Type: "deposited", Data: 50},
+          {Type: "withdrawn", Data: 30},
+        }
+        account := ReconstructBankAccount(events)
+        if account.Balance != 120 {
+          t.Errorf("expected balance 120, got %d", account.Balance)
+        }
+      }
+
+      func TestBankAccountEmpty(t *testing.T) {
+        account := ReconstructBankAccount([]Event{})
+        if account.Balance != 0 {
+          t.Errorf("expected balance 0, got %d", account.Balance)
+        }
+      }
+
+- id: go_agent_L4_saga
+  lang: go
+  prompt: |
+    Sagaパターン（分散トランザクション）を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 複数ステップのトランザクション
+    - 失敗時の補償アクション
+    - 逆順でロールバック
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "errors"
+        "testing"
+      )
+
+      var errTest = errors.New("test error")
+
+      func TestSagaSuccess(t *testing.T) {
+        saga := NewSaga()
+        results := []string{}
+
+        saga.AddStep(
+          func() error { results = append(results, "s1"); return nil },
+          func() error { results = append(results, "c1"); return nil },
+        )
+        saga.AddStep(
+          func() error { results = append(results, "s2"); return nil },
+          func() error { results = append(results, "c2"); return nil },
+        )
+
+        err := saga.Execute()
+        if err != nil {
+          t.Fatalf("unexpected error: %v", err)
+        }
+
+        expected := []string{"s1", "s2"}
+        for i, v := range expected {
+          if results[i] != v {
+            t.Errorf("expected %s, got %s", v, results[i])
+          }
+        }
+      }
+
+      func TestSagaCompensation(t *testing.T) {
+        saga := NewSaga()
+        results := []string{}
+
+        saga.AddStep(
+          func() error { results = append(results, "s1"); return nil },
+          func() error { results = append(results, "c1"); return nil },
+        )
+        saga.AddStep(
+          func() error { results = append(results, "s2"); return nil },
+          func() error { results = append(results, "c2"); return nil },
+        )
+        saga.AddStep(
+          func() error { return errTest },
+          func() error { return nil },
+        )
+
+        saga.Execute()
+
+        // s1, s2 executed, then c2, c1 in reverse
+        if len(results) < 4 {
+          t.Fatalf("expected compensation, got %v", results)
+        }
+        if results[2] != "c2" || results[3] != "c1" {
+          t.Errorf("wrong compensation order: %v", results)
+        }
+      }
+
+- id: go_agent_L4_scheduler
+  lang: go
+  prompt: |
+    タスクスケジューラを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - 定期実行タスク
+    - 遅延実行タスク
+    - タスクのキャンセル
+    - 並行実行
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sync/atomic"
+        "testing"
+        "time"
+      )
+
+      func TestSchedulerDelay(t *testing.T) {
+        s := NewScheduler()
+        s.Start()
+        defer s.Stop()
+
+        var executed int32
+        s.After(50*time.Millisecond, func() {
+          atomic.StoreInt32(&executed, 1)
+        })
+
+        time.Sleep(100 * time.Millisecond)
+        if atomic.LoadInt32(&executed) != 1 {
+          t.Error("expected task to execute")
+        }
+      }
+
+      func TestSchedulerPeriodic(t *testing.T) {
+        s := NewScheduler()
+        s.Start()
+        defer s.Stop()
+
+        var count int32
+        id := s.Every(30*time.Millisecond, func() {
+          atomic.AddInt32(&count, 1)
+        })
+
+        time.Sleep(100 * time.Millisecond)
+        s.Cancel(id)
+
+        c := atomic.LoadInt32(&count)
+        if c < 2 {
+          t.Errorf("expected at least 2 executions, got %d", c)
+        }
+      }
+
+      func TestSchedulerCancel(t *testing.T) {
+        s := NewScheduler()
+        s.Start()
+        defer s.Stop()
+
+        var executed int32
+        id := s.After(100*time.Millisecond, func() {
+          atomic.StoreInt32(&executed, 1)
+        })
+
+        s.Cancel(id)
+        time.Sleep(150 * time.Millisecond)
+
+        if atomic.LoadInt32(&executed) != 0 {
+          t.Error("canceled task should not execute")
+        }
+      }
+
+- id: go_agent_L4_raft_log
+  lang: go
+  prompt: |
+    Raftログ（分散合意の一部）を実装。解説不要。solution.go。package bench。
+
+    要件:
+    - ログエントリの追加
+    - コミット済みインデックスの追跡
+    - エントリの取得
+    - ログの切り詰め（compaction）
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestRaftLogAppend(t *testing.T) {
+        log := NewRaftLog()
+        log.Append(Entry{Term: 1, Data: "cmd1"})
+        log.Append(Entry{Term: 1, Data: "cmd2"})
+
+        if log.LastIndex() != 2 {
+          t.Errorf("expected lastIndex 2, got %d", log.LastIndex())
+        }
+      }
+
+      func TestRaftLogGet(t *testing.T) {
+        log := NewRaftLog()
+        log.Append(Entry{Term: 1, Data: "cmd1"})
+        log.Append(Entry{Term: 2, Data: "cmd2"})
+
+        e, ok := log.Get(2)
+        if !ok {
+          t.Fatal("expected entry")
+        }
+        if e.Term != 2 || e.Data != "cmd2" {
+          t.Errorf("unexpected entry: %+v", e)
+        }
+      }
+
+      func TestRaftLogCommit(t *testing.T) {
+        log := NewRaftLog()
+        log.Append(Entry{Term: 1, Data: "cmd1"})
+        log.Append(Entry{Term: 1, Data: "cmd2"})
+
+        log.Commit(1)
+        if log.CommitIndex() != 1 {
+          t.Errorf("expected commitIndex 1, got %d", log.CommitIndex())
+        }
+      }
+
+      func TestRaftLogCompact(t *testing.T) {
+        log := NewRaftLog()
+        for i := 0; i < 10; i++ {
+          log.Append(Entry{Term: 1, Data: "cmd"})
+        }
+        log.Commit(5)
+        log.Compact(5)
+
+        _, ok := log.Get(3)
+        if ok {
+          t.Error("compacted entry should not exist")
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# HTTP/ネットワーク
+# -----------------------------------------------------------------------------
+
+- id: go_http_handler
+  lang: go
+  prompt: |
+    HTTPハンドラを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - HealthHandler: GET /health に {"status":"ok"} を返す
+    - EchoHandler: POST /echo にリクエストボディをそのまま返す
+    - JSONレスポンスを返す
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "net/http"
+        "net/http/httptest"
+        "strings"
+        "testing"
+      )
+
+      func TestHealthHandler(t *testing.T) {
+        req := httptest.NewRequest("GET", "/health", nil)
+        w := httptest.NewRecorder()
+        HealthHandler(w, req)
+
+        if w.Code != http.StatusOK {
+          t.Errorf("expected 200, got %d", w.Code)
+        }
+        if !strings.Contains(w.Body.String(), "ok") {
+          t.Errorf("expected ok in body: %s", w.Body.String())
+        }
+      }
+
+      func TestEchoHandler(t *testing.T) {
+        body := strings.NewReader("hello world")
+        req := httptest.NewRequest("POST", "/echo", body)
+        w := httptest.NewRecorder()
+        EchoHandler(w, req)
+
+        if w.Code != http.StatusOK {
+          t.Errorf("expected 200, got %d", w.Code)
+        }
+        if w.Body.String() != "hello world" {
+          t.Errorf("expected echo, got %s", w.Body.String())
+        }
+      }
+
+- id: go_http_middleware
+  lang: go
+  prompt: |
+    HTTPミドルウェアを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - LoggingMiddleware: リクエストをログ出力
+    - RecoveryMiddleware: パニックをリカバー
+    - AuthMiddleware: Authorizationヘッダをチェック
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "net/http"
+        "net/http/httptest"
+        "testing"
+      )
+
+      func TestRecoveryMiddleware(t *testing.T) {
+        panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+          panic("test panic")
+        })
+
+        handler := RecoveryMiddleware(panicHandler)
+        req := httptest.NewRequest("GET", "/", nil)
+        w := httptest.NewRecorder()
+
+        // Should not panic
+        handler.ServeHTTP(w, req)
+
+        if w.Code != http.StatusInternalServerError {
+          t.Errorf("expected 500, got %d", w.Code)
+        }
+      }
+
+      func TestAuthMiddleware(t *testing.T) {
+        handler := AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+          w.WriteHeader(http.StatusOK)
+        }))
+
+        // Without auth
+        req := httptest.NewRequest("GET", "/", nil)
+        w := httptest.NewRecorder()
+        handler.ServeHTTP(w, req)
+        if w.Code != http.StatusUnauthorized {
+          t.Errorf("expected 401, got %d", w.Code)
+        }
+
+        // With auth
+        req = httptest.NewRequest("GET", "/", nil)
+        req.Header.Set("Authorization", "Bearer token")
+        w = httptest.NewRecorder()
+        handler.ServeHTTP(w, req)
+        if w.Code != http.StatusOK {
+          t.Errorf("expected 200, got %d", w.Code)
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# I/O とストリーム
+# -----------------------------------------------------------------------------
+
+- id: go_reader_writer
+  lang: go
+  prompt: |
+    io.Reader/Writerを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - CountingReader: 読み取りバイト数をカウント
+    - LimitWriter: 最大バイト数まで書き込み
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "io"
+        "strings"
+        "testing"
+      )
+
+      func TestCountingReader(t *testing.T) {
+        r := strings.NewReader("hello world")
+        cr := NewCountingReader(r)
+
+        buf := make([]byte, 5)
+        cr.Read(buf)
+        cr.Read(buf)
+
+        if cr.Count() != 10 {
+          t.Errorf("expected 10 bytes, got %d", cr.Count())
+        }
+      }
+
+      func TestLimitWriter(t *testing.T) {
+        var buf strings.Builder
+        lw := NewLimitWriter(&buf, 5)
+
+        n, _ := io.WriteString(lw, "hello world")
+        if n != 5 {
+          t.Errorf("expected 5 bytes written, got %d", n)
+        }
+        if buf.String() != "hello" {
+          t.Errorf("expected 'hello', got '%s'", buf.String())
+        }
+      }
+
+# -----------------------------------------------------------------------------
+# sync パッケージ活用
+# -----------------------------------------------------------------------------
+
+- id: go_sync_once
+  lang: go
+  prompt: |
+    sync.Onceを使ったシングルトンを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - GetInstance() *Config: 初回呼び出し時のみ初期化
+    - 並行呼び出しでも1回のみ初期化
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "sync"
+        "testing"
+      )
+
+      func TestSingleton(t *testing.T) {
+        ResetInstance() // テスト用リセット
+
+        c1 := GetInstance()
+        c2 := GetInstance()
+
+        if c1 != c2 {
+          t.Error("expected same instance")
+        }
+      }
+
+      func TestSingletonConcurrent(t *testing.T) {
+        ResetInstance()
+
+        var wg sync.WaitGroup
+        instances := make([]*Config, 100)
+
+        for i := 0; i < 100; i++ {
+          wg.Add(1)
+          go func(idx int) {
+            defer wg.Done()
+            instances[idx] = GetInstance()
+          }(i)
+        }
+
+        wg.Wait()
+
+        for i := 1; i < 100; i++ {
+          if instances[i] != instances[0] {
+            t.Fatal("different instances created")
+          }
+        }
+      }
+
+- id: go_sync_pool
+  lang: go
+  prompt: |
+    sync.Poolを使ったオブジェクトプールを実装。解説不要。solution.go。package bench。
+
+    要件:
+    - BufferPool: バイトバッファのプール
+    - Get() *bytes.Buffer
+    - Put(*bytes.Buffer)
+  tests:
+    solution_test.go: |
+      package bench
+
+      import (
+        "testing"
+      )
+
+      func TestBufferPool(t *testing.T) {
+        pool := NewBufferPool()
+
+        buf := pool.Get()
+        if buf == nil {
+          t.Fatal("expected buffer")
+        }
+
+        buf.WriteString("test")
+        pool.Put(buf)
+
+        buf2 := pool.Get()
+        if buf2.Len() != 0 {
+          t.Error("expected clean buffer after put")
+        }
+      }
+
+      func BenchmarkBufferPool(b *testing.B) {
+        pool := NewBufferPool()
+        b.ResetTimer()
+
+        for i := 0; i < b.N; i++ {
+          buf := pool.Get()
+          buf.WriteString("benchmark")
+          pool.Put(buf)
         }
       }

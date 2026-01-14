@@ -171,7 +171,37 @@ def parse_test_report(lang: str) -> Tuple[int, int, int]:
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # TODO: Go 用のパーサーを追加可能
+    if lang == "go" and os.path.exists(report_path):
+        try:
+            with open(report_path, "r", encoding="utf-8") as f:
+                # go test -json は各行が独立したJSONオブジェクト
+                passed = 0
+                failed = 0
+                seen_tests = set()
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                        action = event.get("Action")
+                        test_name = event.get("Test")
+                        # テスト関数単位でカウント（サブテストは親に含める）
+                        if test_name and "/" not in test_name:
+                            if action == "pass" and test_name not in seen_tests:
+                                passed += 1
+                                seen_tests.add(test_name)
+                            elif action == "fail" and test_name not in seen_tests:
+                                failed += 1
+                                seen_tests.add(test_name)
+                    except json.JSONDecodeError:
+                        continue
+                total = passed + failed
+                if total > 0:
+                    return passed, failed, total
+        except IOError:
+            pass
+
     return 0, 0, 0
 
 
