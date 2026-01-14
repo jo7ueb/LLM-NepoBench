@@ -860,28 +860,90 @@
     tests/test_solution.py: |
       from solution import UrlShortener
 
-      def test_shorten_and_restore():
+      # ========== 基本機能テスト (40%) ==========
+      def test_01_basic_shorten():
+          """基本: URLを短縮できる"""
           shortener = UrlShortener()
-          short_id = shortener.shorten("https://example.com/very/long/path")
-          original = shortener.restore(short_id)
-          assert original == "https://example.com/very/long/path"
+          short_id = shortener.shorten("https://example.com")
+          assert short_id is not None
+          assert len(short_id) > 0
 
-      def test_short_id_is_short():
+      def test_02_basic_restore():
+          """基本: 短縮IDから元URLを復元できる"""
           shortener = UrlShortener()
-          short_id = shortener.shorten("https://example.com/a/b/c/d/e/f")
+          url = "https://example.com/path"
+          short_id = shortener.shorten(url)
+          restored = shortener.restore(short_id)
+          assert restored == url
+
+      def test_03_short_id_length():
+          """基本: IDは十分に短い"""
+          shortener = UrlShortener()
+          short_id = shortener.shorten("https://example.com/very/long/path/that/is/much/longer")
           assert len(short_id) <= 10
 
-      def test_same_url_different_ids_or_same():
+      def test_04_returns_string():
+          """基本: 戻り値は文字列"""
+          shortener = UrlShortener()
+          short_id = shortener.shorten("https://example.com")
+          assert isinstance(short_id, str)
+
+      # ========== 応用テスト (30%) ==========
+      def test_05_multiple_urls():
+          """応用: 複数のURLを管理できる"""
+          shortener = UrlShortener()
+          id1 = shortener.shorten("https://example.com/page1")
+          id2 = shortener.shorten("https://example.com/page2")
+          assert shortener.restore(id1) == "https://example.com/page1"
+          assert shortener.restore(id2) == "https://example.com/page2"
+
+      def test_06_different_ids_for_different_urls():
+          """応用: 異なるURLには異なるIDを生成"""
+          shortener = UrlShortener()
+          id1 = shortener.shorten("https://example.com/a")
+          id2 = shortener.shorten("https://example.com/b")
+          assert id1 != id2
+
+      def test_07_same_url_consistency():
+          """応用: 同じURLは同じ結果（IDが同じか、復元結果が同じ）"""
           shortener = UrlShortener()
           id1 = shortener.shorten("https://example.com")
           id2 = shortener.shorten("https://example.com")
-          # 同じURLは同じIDでも異なるIDでも可
           assert shortener.restore(id1) == shortener.restore(id2)
 
-      def test_invalid_id():
+      # ========== エッジケーステスト (30%) ==========
+      def test_08_invalid_id_returns_none():
+          """エッジ: 存在しないIDはNoneを返す"""
           shortener = UrlShortener()
-          result = shortener.restore("nonexistent")
+          result = shortener.restore("nonexistent_id_12345")
           assert result is None
+
+      def test_09_empty_string_id():
+          """エッジ: 空文字IDはNoneを返す"""
+          shortener = UrlShortener()
+          result = shortener.restore("")
+          assert result is None
+
+      def test_10_special_characters_in_url():
+          """エッジ: 特殊文字を含むURLを処理できる"""
+          shortener = UrlShortener()
+          url = "https://example.com/path?query=value&foo=bar#anchor"
+          short_id = shortener.shorten(url)
+          assert shortener.restore(short_id) == url
+
+      def test_11_long_url():
+          """エッジ: 非常に長いURLを処理できる"""
+          shortener = UrlShortener()
+          url = "https://example.com/" + "a" * 500
+          short_id = shortener.shorten(url)
+          assert shortener.restore(short_id) == url
+
+      def test_12_unicode_in_url():
+          """エッジ: Unicode文字を含むURLを処理できる"""
+          shortener = UrlShortener()
+          url = "https://example.com/日本語/パス"
+          short_id = shortener.shorten(url)
+          assert shortener.restore(short_id) == url
 
 
 - id: py_agent_L1_logger
@@ -1282,44 +1344,112 @@
     tests/test_solution.py: |
       from solution import ShoppingCart
 
-      def test_add_item():
+      # ========== 基本機能テスト (35%) ==========
+      def test_01_empty_cart_total():
+          """基本: 空のカートは合計0"""
           cart = ShoppingCart()
-          cart.add_item("apple", price=100, quantity=2)
-          assert cart.get_total() == 200
+          assert cart.get_total() == 0
 
-      def test_remove_item():
+      def test_02_add_single_item():
+          """基本: 1商品を追加"""
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=1)
+          assert cart.get_total() == 100
+
+      def test_03_add_item_with_quantity():
+          """基本: 数量付きで商品追加"""
           cart = ShoppingCart()
           cart.add_item("apple", price=100, quantity=3)
-          cart.remove_item("apple", quantity=1)
-          assert cart.get_total() == 200
+          assert cart.get_total() == 300
 
-      def test_remove_all():
+      def test_04_add_multiple_different_items():
+          """基本: 複数の異なる商品を追加"""
           cart = ShoppingCart()
           cart.add_item("apple", price=100, quantity=2)
-          cart.remove_item("apple")  # 数量指定なしで全削除
-          assert cart.get_total() == 0
+          cart.add_item("banana", price=50, quantity=3)
+          assert cart.get_total() == 350
 
-      def test_percentage_discount():
+      def test_05_get_total_returns_number():
+          """基本: get_total()は数値を返す"""
           cart = ShoppingCart()
-          cart.add_item("apple", price=100, quantity=10)
-          cart.apply_discount(percent=10)  # 10%オフ
-          assert cart.get_total() == 900
+          cart.add_item("item", price=100, quantity=1)
+          total = cart.get_total()
+          assert isinstance(total, (int, float))
 
-      def test_fixed_discount():
+      # ========== 削除機能テスト (20%) ==========
+      def test_06_remove_partial_quantity():
+          """削除: 数量を指定して部分削除"""
           cart = ShoppingCart()
           cart.add_item("apple", price=100, quantity=5)
-          cart.apply_discount(amount=50)  # 50円引き
-          assert cart.get_total() == 450
+          cart.remove_item("apple", quantity=2)
+          assert cart.get_total() == 300
 
-      def test_empty_cart():
+      def test_07_remove_all_without_quantity():
+          """削除: 数量指定なしで全削除"""
           cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=3)
+          cart.remove_item("apple")
           assert cart.get_total() == 0
 
-      def test_item_count():
+      def test_08_remove_item_leaves_others():
+          """削除: 他の商品は残る"""
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=2)
+          cart.add_item("banana", price=50, quantity=2)
+          cart.remove_item("apple")
+          assert cart.get_total() == 100
+
+      # ========== 割引機能テスト (25%) ==========
+      def test_09_percentage_discount():
+          """割引: パーセント割引"""
+          cart = ShoppingCart()
+          cart.add_item("item", price=100, quantity=10)
+          cart.apply_discount(percent=10)
+          assert cart.get_total() == 900
+
+      def test_10_fixed_amount_discount():
+          """割引: 固定金額割引"""
+          cart = ShoppingCart()
+          cart.add_item("item", price=100, quantity=5)
+          cart.apply_discount(amount=50)
+          assert cart.get_total() == 450
+
+      def test_11_large_percentage_discount():
+          """割引: 50%割引"""
+          cart = ShoppingCart()
+          cart.add_item("item", price=200, quantity=4)
+          cart.apply_discount(percent=50)
+          assert cart.get_total() == 400
+
+      def test_12_discount_on_multiple_items():
+          """割引: 複数商品への割引適用"""
+          cart = ShoppingCart()
+          cart.add_item("a", price=100, quantity=2)
+          cart.add_item("b", price=200, quantity=1)
+          cart.apply_discount(percent=25)
+          assert cart.get_total() == 300
+
+      # ========== 付加機能テスト (20%) ==========
+      def test_13_item_count():
+          """付加: アイテム総数の取得"""
           cart = ShoppingCart()
           cart.add_item("apple", price=100, quantity=2)
           cart.add_item("banana", price=50, quantity=3)
           assert cart.item_count() == 5
+
+      def test_14_add_same_item_twice():
+          """付加: 同じ商品を2回追加すると合算"""
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=2)
+          cart.add_item("apple", price=100, quantity=3)
+          assert cart.get_total() == 500
+
+      def test_15_float_prices():
+          """付加: 小数点価格の処理"""
+          cart = ShoppingCart()
+          cart.add_item("item", price=99.99, quantity=2)
+          total = cart.get_total()
+          assert 199.0 <= total <= 200.0
 
 
 - id: py_agent_password_policy
@@ -2429,14 +2559,43 @@
       import time
       from solution import CircuitBreaker, CircuitState
 
-      def test_closed_state():
+      # ========== 状態列挙型テスト (10%) ==========
+      def test_01_circuit_state_enum():
+          """列挙型: CircuitStateが存在する"""
+          assert hasattr(CircuitState, 'CLOSED')
+          assert hasattr(CircuitState, 'OPEN')
+          assert hasattr(CircuitState, 'HALF_OPEN')
+
+      # ========== クローズ状態テスト (25%) ==========
+      def test_02_initial_state_closed():
+          """クローズ: 初期状態はCLOSED"""
           cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
           assert cb.state == CircuitState.CLOSED
-          # 成功は通常通り
-          result = cb.call(lambda: "ok")
-          assert result == "ok"
 
-      def test_open_after_failures():
+      def test_03_closed_passes_calls():
+          """クローズ: 呼び出しが正常に通る"""
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          result = cb.call(lambda: "success")
+          assert result == "success"
+
+      def test_04_closed_returns_value():
+          """クローズ: 戻り値を正しく返す"""
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          result = cb.call(lambda: 42)
+          assert result == 42
+
+      def test_05_closed_propagates_exception():
+          """クローズ: 例外は伝播する"""
+          cb = CircuitBreaker(failure_threshold=5, recovery_timeout=0.1)
+          try:
+              cb.call(lambda: (_ for _ in ()).throw(ValueError("test")))
+              assert False
+          except ValueError as e:
+              assert "test" in str(e)
+
+      # ========== オープン状態遷移テスト (25%) ==========
+      def test_06_opens_after_threshold():
+          """オープン: しきい値到達でOPENに遷移"""
           cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
           def failing():
               raise RuntimeError("fail")
@@ -2447,7 +2606,20 @@
                   pass
           assert cb.state == CircuitState.OPEN
 
-      def test_open_rejects_calls():
+      def test_07_stays_closed_below_threshold():
+          """オープン: しきい値未満はCLOSEDのまま"""
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          assert cb.state == CircuitState.CLOSED
+
+      def test_08_open_rejects_calls():
+          """オープン: OPEN状態は呼び出しを拒否"""
           cb = CircuitBreaker(failure_threshold=2, recovery_timeout=1.0)
           def failing():
               raise RuntimeError("fail")
@@ -2456,14 +2628,32 @@
                   cb.call(failing)
               except RuntimeError:
                   pass
-          # オープン状態では即座に例外
           try:
               cb.call(lambda: "test")
               assert False
           except Exception as e:
               assert "open" in str(e).lower() or "circuit" in str(e).lower()
 
-      def test_half_open_after_timeout():
+      def test_09_open_doesnt_call_function():
+          """オープン: OPEN状態は関数を実行しない"""
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=1.0)
+          called = [False]
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          try:
+              cb.call(lambda: called.__setitem__(0, True))
+          except:
+              pass
+          assert called[0] is False
+
+      # ========== ハーフオープン状態テスト (25%) ==========
+      def test_10_half_open_after_timeout():
+          """ハーフオープン: タイムアウト後にHALF_OPENに遷移"""
           cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
           def failing():
               raise RuntimeError("fail")
@@ -2475,7 +2665,8 @@
           time.sleep(0.15)
           assert cb.state == CircuitState.HALF_OPEN
 
-      def test_recovery_to_closed():
+      def test_11_half_open_allows_one_call():
+          """ハーフオープン: 1回の呼び出しを許可"""
           cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
           def failing():
               raise RuntimeError("fail")
@@ -2485,10 +2676,77 @@
               except RuntimeError:
                   pass
           time.sleep(0.15)
-          # ハーフオープンで成功
-          result = cb.call(lambda: "recovered")
-          assert result == "recovered"
+          result = cb.call(lambda: "probe")
+          assert result == "probe"
+
+      def test_12_recovery_to_closed():
+          """回復: 成功でCLOSEDに戻る"""
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          time.sleep(0.15)
+          cb.call(lambda: "ok")
           assert cb.state == CircuitState.CLOSED
+
+      def test_13_half_open_failure_reopens():
+          """回復失敗: 失敗で再びOPENに戻る"""
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          time.sleep(0.15)
+          try:
+              cb.call(failing)
+          except RuntimeError:
+              pass
+          assert cb.state == CircuitState.OPEN
+
+      # ========== エッジケーステスト (15%) ==========
+      def test_14_success_resets_failure_count():
+          """エッジ: 成功は失敗カウントをリセット"""
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          try:
+              cb.call(failing)
+          except RuntimeError:
+              pass
+          try:
+              cb.call(failing)
+          except RuntimeError:
+              pass
+          cb.call(lambda: "success")  # リセット
+          try:
+              cb.call(failing)
+          except RuntimeError:
+              pass
+          assert cb.state == CircuitState.CLOSED
+
+      def test_15_different_thresholds():
+          """エッジ: 異なるしきい値で動作"""
+          cb = CircuitBreaker(failure_threshold=5, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(4):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          assert cb.state == CircuitState.CLOSED
+          try:
+              cb.call(failing)
+          except RuntimeError:
+              pass
+          assert cb.state == CircuitState.OPEN
 
 
 - id: py_agent_L3_event_sourcing
