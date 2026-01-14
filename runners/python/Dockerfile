@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 # 依存（テスト実行に必要）
-RUN pip install --no-cache-dir pytest fastapi "httpx>=0.25" uvicorn
+RUN pip install --no-cache-dir pytest pytest-json-report fastapi "httpx>=0.25" uvicorn pandas
 
 # ランナースクリプトをコピー（コピー時に実行権限を付与）
 WORKDIR /runner

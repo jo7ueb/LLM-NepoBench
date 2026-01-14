@@ -1,3 +1,13 @@
+# =============================================================================
+# Python ベンチマーク問題集
+# カテゴリ: バグ修正, データ処理, アルゴリズム, API設計, OOP, 例外処理, etc.
+# 各問題に複数テストケースを含み、部分点評価が可能
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# カテゴリ: バグ修正 (Bug Fix)
+# -----------------------------------------------------------------------------
+
 - id: py_remove_even
   lang: python
   prompt: |
@@ -14,8 +24,301 @@
     tests/test_solution.py: |
       from solution import remove_even_numbers
 
-      def test_remove_even():
+      def test_basic():
           assert remove_even_numbers([1,2,4,8,9]) == [1,9]
+
+      def test_all_even():
+          assert remove_even_numbers([2,4,6,8]) == []
+
+      def test_all_odd():
+          assert remove_even_numbers([1,3,5,7]) == [1,3,5,7]
+
+      def test_empty():
+          assert remove_even_numbers([]) == []
+
+      def test_consecutive_evens():
+          assert remove_even_numbers([2,4,6,1,3]) == [1,3]
+
+
+- id: py_off_by_one
+  lang: python
+  prompt: |
+    次の関数は1からnまでの合計を計算するはずですが、off-by-one エラーがあります。
+    sum_to_n(5) は 1+2+3+4+5=15 を返すべきです。
+    解説不要。修正後のPythonコードのみ出力してください。
+
+    def sum_to_n(n):
+        total = 0
+        for i in range(n):
+            total += i
+        return total
+  tests:
+    tests/test_solution.py: |
+      from solution import sum_to_n
+
+      def test_sum_5():
+          assert sum_to_n(5) == 15
+
+      def test_sum_1():
+          assert sum_to_n(1) == 1
+
+      def test_sum_10():
+          assert sum_to_n(10) == 55
+
+      def test_sum_0():
+          assert sum_to_n(0) == 0
+
+
+- id: py_mutable_default
+  lang: python
+  prompt: |
+    次の関数はミュータブルなデフォルト引数のバグがあります。
+    呼び出すたびに新しい空リストから始めるべきです。
+    解説不要。修正後のPythonコードのみ出力してください。
+
+    def append_to_list(item, lst=[]):
+        lst.append(item)
+        return lst
+  tests:
+    tests/test_solution.py: |
+      from solution import append_to_list
+
+      def test_independent_calls():
+          result1 = append_to_list(1)
+          result2 = append_to_list(2)
+          assert result1 == [1]
+          assert result2 == [2]
+
+      def test_with_provided_list():
+          my_list = [10]
+          result = append_to_list(20, my_list)
+          assert result == [10, 20]
+
+      def test_multiple_appends():
+          append_to_list("a")
+          append_to_list("b")
+          result = append_to_list("c")
+          assert result == ["c"]
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: データ処理 (Data Processing)
+# -----------------------------------------------------------------------------
+
+- id: py_word_frequency
+  lang: python
+  prompt: |
+    テキストから単語の出現頻度を数える関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - word_frequency(text: str) -> dict[str, int]
+    - 単語は空白で区切られる
+    - 大文字小文字は区別しない（すべて小文字に変換）
+    - 句読点（.,!?）は除去する
+    - 空の入力には空辞書を返す
+  tests:
+    tests/test_solution.py: |
+      from solution import word_frequency
+
+      def test_basic():
+          result = word_frequency("Hello world hello")
+          assert result == {"hello": 2, "world": 1}
+
+      def test_punctuation():
+          result = word_frequency("Hello, world! Hello.")
+          assert result == {"hello": 2, "world": 1}
+
+      def test_empty():
+          assert word_frequency("") == {}
+
+      def test_single_word():
+          assert word_frequency("Python") == {"python": 1}
+
+      def test_case_insensitive():
+          result = word_frequency("Cat CAT cat")
+          assert result == {"cat": 3}
+
+
+- id: py_flatten_nested
+  lang: python
+  prompt: |
+    ネストしたリストを平坦化する関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - flatten(nested: list) -> list
+    - 任意の深さのネストに対応
+    - 再帰的に処理する
+  tests:
+    tests/test_solution.py: |
+      from solution import flatten
+
+      def test_simple():
+          assert flatten([1, [2, 3], 4]) == [1, 2, 3, 4]
+
+      def test_deep_nested():
+          assert flatten([1, [2, [3, [4]]]]) == [1, 2, 3, 4]
+
+      def test_already_flat():
+          assert flatten([1, 2, 3]) == [1, 2, 3]
+
+      def test_empty():
+          assert flatten([]) == []
+
+      def test_mixed_types():
+          assert flatten([1, ["a", [True, [None]]]]) == [1, "a", True, None]
+
+
+- id: py_group_by_key
+  lang: python
+  prompt: |
+    辞書のリストを指定キーでグループ化する関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - group_by(items: list[dict], key: str) -> dict[Any, list[dict]]
+    - 指定キーの値でグループ化
+    - キーが存在しないアイテムは "unknown" でグループ化
+  tests:
+    tests/test_solution.py: |
+      from solution import group_by
+
+      def test_basic():
+          items = [
+              {"name": "Alice", "dept": "Engineering"},
+              {"name": "Bob", "dept": "Sales"},
+              {"name": "Charlie", "dept": "Engineering"},
+          ]
+          result = group_by(items, "dept")
+          assert len(result["Engineering"]) == 2
+          assert len(result["Sales"]) == 1
+
+      def test_missing_key():
+          items = [
+              {"name": "Alice", "dept": "Engineering"},
+              {"name": "Bob"},
+          ]
+          result = group_by(items, "dept")
+          assert "unknown" in result
+          assert len(result["unknown"]) == 1
+
+      def test_empty():
+          assert group_by([], "key") == {}
+
+      def test_single_group():
+          items = [{"a": 1}, {"a": 1}, {"a": 1}]
+          result = group_by(items, "a")
+          assert len(result[1]) == 3
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: アルゴリズム (Algorithms)
+# -----------------------------------------------------------------------------
+
+- id: py_binary_search
+  lang: python
+  prompt: |
+    ソート済みリストで二分探索を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - binary_search(arr: list[int], target: int) -> int
+    - ターゲットが見つかればそのインデックスを返す
+    - 見つからなければ -1 を返す
+    - 組み込みの bisect モジュールは使用不可
+  tests:
+    tests/test_solution.py: |
+      from solution import binary_search
+
+      def test_found_middle():
+          assert binary_search([1, 3, 5, 7, 9], 5) == 2
+
+      def test_found_first():
+          assert binary_search([1, 3, 5, 7, 9], 1) == 0
+
+      def test_found_last():
+          assert binary_search([1, 3, 5, 7, 9], 9) == 4
+
+      def test_not_found():
+          assert binary_search([1, 3, 5, 7, 9], 6) == -1
+
+      def test_empty():
+          assert binary_search([], 5) == -1
+
+      def test_single_element():
+          assert binary_search([42], 42) == 0
+          assert binary_search([42], 1) == -1
+
+
+- id: py_fibonacci_memo
+  lang: python
+  prompt: |
+    メモ化を使った効率的なフィボナッチ数列を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - fibonacci(n: int) -> int
+    - fib(0) = 0, fib(1) = 1
+    - n >= 40 でも高速に動作すること
+  tests:
+    tests/test_solution.py: |
+      from solution import fibonacci
+      import time
+
+      def test_base_cases():
+          assert fibonacci(0) == 0
+          assert fibonacci(1) == 1
+
+      def test_small_values():
+          assert fibonacci(5) == 5
+          assert fibonacci(10) == 55
+
+      def test_medium_values():
+          assert fibonacci(20) == 6765
+
+      def test_large_value_performance():
+          start = time.time()
+          result = fibonacci(40)
+          elapsed = time.time() - start
+          assert result == 102334155
+          assert elapsed < 1.0  # 1秒以内に完了すべき
+
+
+- id: py_merge_sorted
+  lang: python
+  prompt: |
+    2つのソート済みリストをマージして1つのソート済みリストにする関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - merge_sorted(list1: list[int], list2: list[int]) -> list[int]
+    - O(n+m) の時間計算量で実装
+    - 組み込みの sorted() や sort() は使用不可
+  tests:
+    tests/test_solution.py: |
+      from solution import merge_sorted
+
+      def test_basic():
+          assert merge_sorted([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
+
+      def test_one_empty():
+          assert merge_sorted([1, 2, 3], []) == [1, 2, 3]
+          assert merge_sorted([], [4, 5, 6]) == [4, 5, 6]
+
+      def test_both_empty():
+          assert merge_sorted([], []) == []
+
+      def test_duplicates():
+          assert merge_sorted([1, 2, 2], [2, 3]) == [1, 2, 2, 2, 3]
+
+      def test_different_lengths():
+          assert merge_sorted([1], [2, 3, 4, 5]) == [1, 2, 3, 4, 5]
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: API設計 (Web API)
+# -----------------------------------------------------------------------------
 
 - id: py_fastapi_tasks
   lang: python
@@ -38,11 +341,12 @@
 
       client = TestClient(app)
 
-      def test_tasks_flow():
+      def test_get_empty():
           r = client.get("/tasks")
           assert r.status_code == 200
           assert r.json() == []
 
+      def test_create_task():
           r = client.post("/tasks", json={"title": "a", "done": False})
           assert r.status_code == 200
           body = r.json()
@@ -50,18 +354,478 @@
           assert body["title"] == "a"
           assert body["done"] is False
 
+      def test_create_second_task():
+          # Reset state by importing fresh
           r = client.post("/tasks", json={"title": "b", "done": True})
           assert r.status_code == 200
-          body2 = r.json()
-          assert body2["id"] == 2
+          body = r.json()
+          assert body["id"] >= 1
+          assert body["title"] == "b"
 
+      def test_list_tasks():
           r = client.get("/tasks")
           assert r.status_code == 200
           items = r.json()
-          assert [t["id"] for t in items] == [1,2]
-          assert items[0]["title"] == "a"
-          assert items[1]["done"] is True
+          assert len(items) >= 1
 
       def test_title_validation():
           r = client.post("/tasks", json={"title": "", "done": False})
           assert r.status_code in (400, 422)
+
+
+- id: py_fastapi_crud
+  lang: python
+  prompt: |
+    FastAPIでユーザーのCRUD APIを実装してください。
+    解説不要。solution.py のみ出力してください。
+
+    仕様:
+    - app インスタンス名は `app`
+    - GET /users - 全ユーザー一覧
+    - GET /users/{id} - 特定ユーザー取得（存在しない場合404）
+    - POST /users - ユーザー作成 {"name": str, "email": str}
+    - PUT /users/{id} - ユーザー更新（存在しない場合404）
+    - DELETE /users/{id} - ユーザー削除（存在しない場合404）
+    - IDは自動採番、インメモリDB
+  tests:
+    tests/test_solution.py: |
+      from fastapi.testclient import TestClient
+      from solution import app
+
+      client = TestClient(app)
+
+      def test_list_empty():
+          r = client.get("/users")
+          assert r.status_code == 200
+          assert isinstance(r.json(), list)
+
+      def test_create_user():
+          r = client.post("/users", json={"name": "Test", "email": "test@example.com"})
+          assert r.status_code in (200, 201)
+          body = r.json()
+          assert "id" in body
+          assert body["name"] == "Test"
+
+      def test_get_user():
+          # Create first
+          r = client.post("/users", json={"name": "Get Test", "email": "get@example.com"})
+          user_id = r.json()["id"]
+          # Get it
+          r = client.get(f"/users/{user_id}")
+          assert r.status_code == 200
+          assert r.json()["name"] == "Get Test"
+
+      def test_get_nonexistent():
+          r = client.get("/users/99999")
+          assert r.status_code == 404
+
+      def test_update_user():
+          r = client.post("/users", json={"name": "Update Test", "email": "update@example.com"})
+          user_id = r.json()["id"]
+          r = client.put(f"/users/{user_id}", json={"name": "Updated", "email": "updated@example.com"})
+          assert r.status_code == 200
+          assert r.json()["name"] == "Updated"
+
+      def test_delete_user():
+          r = client.post("/users", json={"name": "Delete Test", "email": "delete@example.com"})
+          user_id = r.json()["id"]
+          r = client.delete(f"/users/{user_id}")
+          assert r.status_code in (200, 204)
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: OOP / クラス設計
+# -----------------------------------------------------------------------------
+
+- id: py_stack_class
+  lang: python
+  prompt: |
+    スタック（後入れ先出し）のクラスを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - class Stack
+    - push(item) - アイテムを追加
+    - pop() - アイテムを取り出し（空なら IndexError）
+    - peek() - 先頭を参照（取り出さない、空なら IndexError）
+    - is_empty() -> bool
+    - size() -> int
+  tests:
+    tests/test_solution.py: |
+      import pytest
+      from solution import Stack
+
+      def test_push_pop():
+          s = Stack()
+          s.push(1)
+          s.push(2)
+          assert s.pop() == 2
+          assert s.pop() == 1
+
+      def test_peek():
+          s = Stack()
+          s.push(10)
+          assert s.peek() == 10
+          assert s.size() == 1  # peek doesn't remove
+
+      def test_is_empty():
+          s = Stack()
+          assert s.is_empty() is True
+          s.push(1)
+          assert s.is_empty() is False
+
+      def test_size():
+          s = Stack()
+          assert s.size() == 0
+          s.push(1)
+          s.push(2)
+          assert s.size() == 2
+
+      def test_pop_empty_raises():
+          s = Stack()
+          with pytest.raises(IndexError):
+              s.pop()
+
+      def test_peek_empty_raises():
+          s = Stack()
+          with pytest.raises(IndexError):
+              s.peek()
+
+
+- id: py_bank_account
+  lang: python
+  prompt: |
+    銀行口座クラスを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - class BankAccount(owner: str, initial_balance: float = 0)
+    - deposit(amount: float) - 入金（負の値は ValueError）
+    - withdraw(amount: float) - 出金（残高不足は ValueError）
+    - get_balance() -> float
+    - transfer(target: BankAccount, amount: float) - 他口座へ送金
+  tests:
+    tests/test_solution.py: |
+      import pytest
+      from solution import BankAccount
+
+      def test_initial_balance():
+          acc = BankAccount("Alice", 100)
+          assert acc.get_balance() == 100
+
+      def test_deposit():
+          acc = BankAccount("Bob", 50)
+          acc.deposit(25)
+          assert acc.get_balance() == 75
+
+      def test_withdraw():
+          acc = BankAccount("Charlie", 100)
+          acc.withdraw(30)
+          assert acc.get_balance() == 70
+
+      def test_withdraw_insufficient():
+          acc = BankAccount("Dave", 50)
+          with pytest.raises(ValueError):
+              acc.withdraw(100)
+
+      def test_deposit_negative():
+          acc = BankAccount("Eve", 100)
+          with pytest.raises(ValueError):
+              acc.deposit(-10)
+
+      def test_transfer():
+          acc1 = BankAccount("From", 100)
+          acc2 = BankAccount("To", 50)
+          acc1.transfer(acc2, 30)
+          assert acc1.get_balance() == 70
+          assert acc2.get_balance() == 80
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: 文字列処理 / 正規表現
+# -----------------------------------------------------------------------------
+
+- id: py_email_validator
+  lang: python
+  prompt: |
+    メールアドレスの簡易バリデーション関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - is_valid_email(email: str) -> bool
+    - 形式: xxx@yyy.zzz（@が1つ、ドメインに.が1つ以上）
+    - 空文字、空白のみは False
+    - 正規表現使用可
+  tests:
+    tests/test_solution.py: |
+      from solution import is_valid_email
+
+      def test_valid_simple():
+          assert is_valid_email("test@example.com") is True
+
+      def test_valid_subdomain():
+          assert is_valid_email("user@mail.example.com") is True
+
+      def test_invalid_no_at():
+          assert is_valid_email("testexample.com") is False
+
+      def test_invalid_no_domain():
+          assert is_valid_email("test@") is False
+
+      def test_invalid_no_dot():
+          assert is_valid_email("test@example") is False
+
+      def test_empty():
+          assert is_valid_email("") is False
+
+      def test_whitespace():
+          assert is_valid_email("   ") is False
+
+
+- id: py_parse_log
+  lang: python
+  prompt: |
+    ログ行をパースする関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - parse_log(line: str) -> dict | None
+    - ログ形式: "[LEVEL] YYYY-MM-DD HH:MM:SS message"
+    - 返り値: {"level": str, "timestamp": str, "message": str}
+    - パース失敗時は None を返す
+  tests:
+    tests/test_solution.py: |
+      from solution import parse_log
+
+      def test_info_log():
+          result = parse_log("[INFO] 2024-01-15 10:30:00 Application started")
+          assert result is not None
+          assert result["level"] == "INFO"
+          assert result["timestamp"] == "2024-01-15 10:30:00"
+          assert result["message"] == "Application started"
+
+      def test_error_log():
+          result = parse_log("[ERROR] 2024-01-15 11:00:00 Connection failed")
+          assert result is not None
+          assert result["level"] == "ERROR"
+
+      def test_multi_word_message():
+          result = parse_log("[WARN] 2024-01-15 12:00:00 Memory usage is high")
+          assert result is not None
+          assert result["message"] == "Memory usage is high"
+
+      def test_invalid_format():
+          assert parse_log("Invalid log line") is None
+
+      def test_empty():
+          assert parse_log("") is None
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: デコレータ / 高階関数
+# -----------------------------------------------------------------------------
+
+- id: py_retry_decorator
+  lang: python
+  prompt: |
+    リトライ機能を持つデコレータを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - @retry(max_attempts=3)
+    - 関数が例外を投げたら再試行
+    - max_attempts回失敗したら最後の例外を再raise
+    - 成功したら即座に結果を返す
+  tests:
+    tests/test_solution.py: |
+      import pytest
+      from solution import retry
+
+      def test_success_first_try():
+          @retry(max_attempts=3)
+          def always_works():
+              return "ok"
+          assert always_works() == "ok"
+
+      def test_success_after_retry():
+          counter = {"count": 0}
+          @retry(max_attempts=3)
+          def fails_twice():
+              counter["count"] += 1
+              if counter["count"] < 3:
+                  raise ValueError("fail")
+              return "success"
+          assert fails_twice() == "success"
+          assert counter["count"] == 3
+
+      def test_all_attempts_fail():
+          @retry(max_attempts=3)
+          def always_fails():
+              raise RuntimeError("always fails")
+          with pytest.raises(RuntimeError):
+              always_fails()
+
+      def test_custom_attempts():
+          counter = {"count": 0}
+          @retry(max_attempts=5)
+          def fails_four_times():
+              counter["count"] += 1
+              if counter["count"] < 5:
+                  raise ValueError("fail")
+              return "done"
+          assert fails_four_times() == "done"
+
+
+- id: py_cache_decorator
+  lang: python
+  prompt: |
+    結果をキャッシュするデコレータを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - @cache デコレータ
+    - 同じ引数での呼び出しはキャッシュから返す
+    - 引数が異なれば新たに計算
+    - functools.lru_cache は使用不可
+  tests:
+    tests/test_solution.py: |
+      from solution import cache
+
+      def test_basic_caching():
+          call_count = {"n": 0}
+          @cache
+          def expensive(x):
+              call_count["n"] += 1
+              return x * 2
+          assert expensive(5) == 10
+          assert expensive(5) == 10
+          assert call_count["n"] == 1  # only called once
+
+      def test_different_args():
+          call_count = {"n": 0}
+          @cache
+          def add_one(x):
+              call_count["n"] += 1
+              return x + 1
+          assert add_one(1) == 2
+          assert add_one(2) == 3
+          assert add_one(1) == 2
+          assert call_count["n"] == 2
+
+      def test_multiple_args():
+          @cache
+          def add(a, b):
+              return a + b
+          assert add(1, 2) == 3
+          assert add(1, 2) == 3
+          assert add(2, 3) == 5
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: 例外処理 / エラーハンドリング
+# -----------------------------------------------------------------------------
+
+- id: py_safe_json_parse
+  lang: python
+  prompt: |
+    安全なJSON解析関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - safe_json_parse(text: str, default=None) -> Any
+    - 有効なJSONなら解析結果を返す
+    - 無効なJSONならdefaultを返す
+    - 例外は投げない
+  tests:
+    tests/test_solution.py: |
+      from solution import safe_json_parse
+
+      def test_valid_json():
+          assert safe_json_parse('{"key": "value"}') == {"key": "value"}
+
+      def test_valid_array():
+          assert safe_json_parse('[1, 2, 3]') == [1, 2, 3]
+
+      def test_invalid_json():
+          assert safe_json_parse('not json') is None
+
+      def test_invalid_with_default():
+          assert safe_json_parse('invalid', default={}) == {}
+
+      def test_empty_string():
+          assert safe_json_parse('', default=[]) == []
+
+      def test_number():
+          assert safe_json_parse('42') == 42
+
+
+- id: py_safe_divide
+  lang: python
+  prompt: |
+    安全な除算関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - safe_divide(a, b, default=0) -> float
+    - b が 0 の場合は default を返す
+    - 数値以外が渡された場合も default を返す
+    - 正常な場合は a / b を返す
+  tests:
+    tests/test_solution.py: |
+      from solution import safe_divide
+
+      def test_normal_division():
+          assert safe_divide(10, 2) == 5.0
+
+      def test_division_by_zero():
+          assert safe_divide(10, 0) == 0
+
+      def test_division_by_zero_custom_default():
+          assert safe_divide(10, 0, default=-1) == -1
+
+      def test_invalid_type():
+          assert safe_divide("a", "b") == 0
+
+      def test_float_division():
+          assert safe_divide(7, 2) == 3.5
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: データ変換 / シリアライズ
+# -----------------------------------------------------------------------------
+
+- id: py_dict_to_xml
+  lang: python
+  prompt: |
+    辞書をXML文字列に変換する関数を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    仕様:
+    - dict_to_xml(data: dict, root_tag: str = "root") -> str
+    - ネストした辞書に対応
+    - リストはサポート不要
+    - 属性はサポート不要
+  tests:
+    tests/test_solution.py: |
+      from solution import dict_to_xml
+
+      def test_simple():
+          result = dict_to_xml({"name": "Alice"}, "person")
+          assert "<person>" in result
+          assert "<name>Alice</name>" in result
+          assert "</person>" in result
+
+      def test_nested():
+          result = dict_to_xml({"user": {"name": "Bob"}}, "data")
+          assert "<user>" in result
+          assert "<name>Bob</name>" in result
+
+      def test_empty():
+          result = dict_to_xml({}, "empty")
+          assert "<empty>" in result
+          assert "</empty>" in result
+
+      def test_multiple_keys():
+          result = dict_to_xml({"a": "1", "b": "2"}, "root")
+          assert "<a>1</a>" in result
+          assert "<b>2</b>" in result

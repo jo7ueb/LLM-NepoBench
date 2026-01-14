@@ -1,11 +1,12 @@
 import argparse
+import json
 import os
 import re
 import shutil
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import yaml
@@ -131,6 +132,51 @@ def docker_run(service: str, timeout_s: int) -> tuple[int, str]:
         return 125, f"[ERROR] docker invocation failed: {e}"
 
 
+def parse_test_report(lang: str) -> Tuple[int, int, int]:
+    """
+    テストレポートをパースして (passed, failed, total) を返す。
+    部分点評価用。レポートが見つからない場合は (0, 0, 0) を返す。
+    """
+    report_path = os.path.join(WORKDIR, ".report.json")
+
+    if lang == "python" and os.path.exists(report_path):
+        try:
+            with open(report_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            summary = data.get("summary", {})
+            passed = summary.get("passed", 0)
+            failed = summary.get("failed", 0)
+            error = summary.get("error", 0)
+            total = summary.get("total", passed + failed + error)
+            return passed, failed + error, total
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # TODO: TypeScript / Go 用のパーサーを追加可能
+    return 0, 0, 0
+
+
+def calculate_score(rc: int, lang: str) -> Tuple[int, int, int, int]:
+    """
+    部分点スコアを計算する。
+    Returns: (score, passed, failed, total)
+    - 全テスト通過: 100点
+    - 部分通過: (passed / total) * 100
+    - レポートがない場合: 従来どおり0/100
+    """
+    passed, failed, total = parse_test_report(lang)
+
+    if total > 0:
+        # 部分点計算
+        score = round((passed / total) * 100)
+        return score, passed, failed, total
+
+    # 従来どおりの0/100評価
+    if rc == 0:
+        return 100, 1, 0, 1
+    return 0, 0, 1, 1
+
+
 def load_problems(selected_langs: List[str]) -> List[Problem]:
     problems: List[Problem] = []
     for lang in selected_langs:
@@ -205,8 +251,8 @@ def main() -> None:
 
             # Docker 内でテスト
             rc, log = docker_run(service, timeout_s=args.docker_timeout)
-            passed = (rc == 0)
-            score = 100 if passed else 0
+            score, tests_passed, tests_failed, tests_total = calculate_score(rc, prob.lang)
+            all_passed = (rc == 0)
 
             rows.append(
                 {
@@ -214,7 +260,10 @@ def main() -> None:
                     "lang": prob.lang,
                     "run": run_idx,
                     "score": score,
-                    "passed": passed,
+                    "passed": all_passed,
+                    "tests_passed": tests_passed,
+                    "tests_failed": tests_failed,
+                    "tests_total": tests_total,
                     "exit_code": rc,
                     "llm_seconds": round(t1 - t0, 3),
                     "docker_timeout_s": args.docker_timeout,
@@ -222,7 +271,8 @@ def main() -> None:
                 }
             )
 
-            print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {'PASS' if passed else 'FAIL'} (rc={rc})")
+            status = "PASS" if all_passed else f"PARTIAL({tests_passed}/{tests_total})" if tests_passed > 0 else "FAIL"
+            print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {status} score={score} (rc={rc})")
 
     df = pd.DataFrame(rows)
     df.to_csv(args.out, index=False, encoding="utf-8")

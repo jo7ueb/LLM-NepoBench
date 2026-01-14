@@ -6,4 +6,9 @@ set -euo pipefail
 # /work/solution.py
 # /work/tests/test_solution.py
 
-python -m pytest -q
+# pytest-json-report で結果をJSONに出力（部分点評価用）
+# 終了コードは pytest が返す（0=全て通過, 1=一部失敗, etc）
+python -m pytest -q --json-report --json-report-file=/work/.report.json || exit_code=$?
+
+# 終了コードを返す
+exit ${exit_code:-0}
