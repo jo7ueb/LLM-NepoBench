@@ -1,0 +1,21 @@
+services:
+  py-runner:
+    build: ./runners/python
+    network_mode: "none"
+    volumes:
+      - ./_work:/work:rw
+    working_dir: /work
+
+  ts-runner:
+    build: ./runners/typescript
+    network_mode: "none"
+    volumes:
+      - ./_work:/work:rw
+    working_dir: /work
+
+  go-runner:
+    build: ./runners/go
+    network_mode: "none"
+    volumes:
+      - ./_work:/work:rw
+    working_dir: /work

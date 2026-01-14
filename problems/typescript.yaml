@@ -1,0 +1,71 @@
+- id: ts_typesafety
+  lang: typescript
+  prompt: |
+    TypeScriptで型安全にリファクタしてください。解説不要、コードのみ。
+    次の条件を満たしてください:
+    - any を使わない
+    - User 型を定義する
+    - processUser は User を受け取り、name を大文字化して返す文字列と、age+10の数値を返す
+    - exports: `export type User = ...` と `export function processUser(...) ...`
+
+    元コード:
+    function processUser(user: any) {
+        console.log(user.name.toUpperCase());
+        return user.age + 10;
+    }
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { processUser, type User } from "../solution";
+
+      describe("processUser", () => {
+        it("works", () => {
+          const u: User = { name: "alice", age: 20 };
+          const r = processUser(u);
+          expect(r.upperName).toBe("ALICE");
+          expect(r.agePlus10).toBe(30);
+        });
+      })
+
+- id: ts_async_wait
+  lang: typescript
+  prompt: |
+    TypeScriptで次の関数を修正してください（解説不要、コードのみ）。
+    バグ: forEach内のawaitが効かず、処理完了前にDone相当が発生します。
+    要求:
+    - saveAll は items と save 関数を受け取り、全件保存が完了してから resolve する Promise を返す
+    - exports: `export async function saveAll(...)`
+    - forEach は使わない
+
+    参考(バグコード):
+    async function saveAll(items: string[]) {
+        items.forEach(async (item) => {
+            await db.save(item);
+        });
+        console.log("Done");
+    }
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { saveAll } from "../solution";
+
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+      describe("saveAll", () => {
+        it("waits for all saves", async () => {
+          const calls: string[] = [];
+          const save = async (item: string) => {
+            await sleep(20);
+            calls.push(item);
+          };
+
+          const t0 = Date.now();
+          await saveAll(["a", "b", "c"], save);
+          const dt = Date.now() - t0;
+
+          expect(calls.sort()).toEqual(["a", "b", "c"]);
+          // 並列なら ~20ms以上、直列なら ~60ms以上。いずれにせよ待っていることが重要
+          expect(dt).toBeGreaterThanOrEqual(15);
+        });
+      })
+

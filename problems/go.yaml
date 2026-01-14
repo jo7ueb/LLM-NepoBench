@@ -1,0 +1,53 @@
+- id: go_polymorphism
+  lang: go
+  prompt: |
+    Goで interface を使って Dog と Cat が Speak() string を実装する例を書いてください。
+    さらに SpeakAll([]Speaker) []string を実装し、各 Speak() の結果を返してください。
+    解説不要。solution.go のコードのみ出力してください。
+    注意: package は `package bench` としてください。
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestSpeakAll(t *testing.T) {
+        ss := []Speaker{Dog{}, Cat{}}
+        out := SpeakAll(ss)
+        if len(out) != 2 {
+          t.Fatalf("len=%d", len(out))
+        }
+        if out[0] == "" || out[1] == "" {
+          t.Fatalf("empty speak")
+        }
+      }
+
+- id: go_concurrent_map
+  lang: go
+  prompt: |
+    Goで並行処理の練習問題です。解説不要。solution.go のコードのみ出力してください。
+    注意: package は `package bench` としてください。
+
+    要件:
+    - Squares(nums []int) []int を実装
+    - goroutine + sync.WaitGroup を使い、各要素を二乗して返す
+    - 返すスライスの順序は入力と同じにすること
+  tests:
+    solution_test.go: |
+      package bench
+
+      import "testing"
+
+      func TestSquares(t *testing.T) {
+        in := []int{1,2,3,4}
+        out := Squares(in)
+        exp := []int{1,4,9,16}
+        if len(out) != len(exp) {
+          t.Fatalf("len=%d", len(out))
+        }
+        for i := range exp {
+          if out[i] != exp[i] {
+            t.Fatalf("out[%d]=%d exp=%d", i, out[i], exp[i])
+          }
+        }
+      }

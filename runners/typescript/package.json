@@ -1,0 +1,9 @@
+{
+  "name": "ts-runner",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
