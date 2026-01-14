@@ -226,6 +226,76 @@ def calculate_score(rc: int, lang: str) -> Tuple[int, int, int, int]:
     return 0, 0, 1, 1
 
 
+def extract_failure_reason(rc: int, log: str, lang: str) -> Tuple[str, str]:
+    """
+    失敗の原因を特定する。
+    Returns: (blame, detail)
+        blame: "LLM" or "ENV" 
+        detail: 短い説明
+    """
+    if rc == 0:
+        return "", ""
+    
+    # タイムアウトはLLMが無限ループ等を書いた可能性が高い
+    if rc == 124:
+        return "LLM", "タイムアウト（無限ループ？）"
+    
+    # Docker自体のエラーは環境の問題
+    if rc == 125:
+        return "ENV", "Docker実行エラー"
+    
+    log_lower = log.lower()
+    
+    # 環境側の明らかな問題
+    if "permission denied" in log_lower:
+        return "ENV", "権限エラー"
+    if "no space left" in log_lower:
+        return "ENV", "ディスク容量不足"
+    if "connection refused" in log_lower:
+        return "ENV", "接続拒否"
+    
+    # それ以外はすべてLLMの問題
+    # rc=2: コード実行前のエラー
+    if rc == 2:
+        if "syntaxerror" in log_lower:
+            if "unterminated" in log_lower:
+                return "LLM", "構文エラー（コード途中で切れている）"
+            return "LLM", "構文エラー"
+        if "importerror" in log_lower or "cannot import" in log_lower:
+            match = re.search(r"cannot import name '(\w+)'", log)
+            if match:
+                return "LLM", f"'{match.group(1)}'をエクスポートしていない"
+            return "LLM", "エクスポート名が違う"
+        if "modulenotfounderror" in log_lower:
+            return "LLM", "存在しないモジュールをimport"
+        if "nameerror" in log_lower:
+            return "LLM", "未定義の変数/関数を使用"
+        if "typeerror" in log_lower:
+            return "LLM", "型エラー"
+        if "attributeerror" in log_lower:
+            return "LLM", "存在しない属性を参照"
+        # TypeScript
+        if "cannot find module" in log_lower:
+            return "LLM", "モジュールが見つからない"
+        if "is not a function" in log_lower:
+            return "LLM", "関数でないものを呼び出し"
+        if "unexpected token" in log_lower:
+            return "LLM", "構文エラー"
+        # Go
+        if "undefined:" in log_lower:
+            return "LLM", "未定義の識別子"
+        if "cannot use" in log_lower:
+            return "LLM", "型の不一致"
+        
+        return "LLM", "コード実行エラー"
+    
+    # rc=1: テスト失敗 → LLMのロジックが間違っている
+    if rc == 1:
+        return "LLM", "テストケース不合格"
+    
+    return "LLM", f"不明なエラー(exit={rc})"
+
+
 def load_problems(selected_langs: List[str]) -> List[Problem]:
     problems: List[Problem] = []
     for lang in selected_langs:
@@ -332,9 +402,16 @@ def main() -> None:
                 }
             )
 
-            status = "PASS" if all_passed else f"PARTIAL({tests_passed}/{tests_total})" if tests_passed > 0 else "FAIL"
-            tps_str = f"{tokens_per_second:.1f} tok/s" if tokens_per_second > 0 else "N/A"
-            print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {status} score={score} ({tps_str})")
+            # 結果表示
+            if all_passed:
+                print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> ✅ PASS score={score}")
+            else:
+                blame, detail = extract_failure_reason(rc, log, prob.lang)
+                if tests_passed > 0:
+                    status = f"🔶 PARTIAL({tests_passed}/{tests_total})"
+                else:
+                    status = "❌ FAIL"
+                print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {status} score={score} [{blame}] {detail}")
 
     df = pd.DataFrame(rows)
     df.to_csv(args.out, index=False, encoding="utf-8")

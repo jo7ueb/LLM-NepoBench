@@ -18,11 +18,15 @@
   lang: typescript
   prompt: |
     TypeScriptで型安全にリファクタしてください。解説不要、コードのみ。
-    次の条件を満たしてください:
+
+    エクスポート:
+    - export type User = { name: string; age: number }
+    - export function processUser(user: User): { upperName: string; agePlus10: number }
+
+    要件:
     - any を使わない
-    - User 型を定義する
-    - processUser は User を受け取り、name を大文字化して返す文字列と、age+10の数値を返す
-    - exports: `export type User = ...` と `export function processUser(...) ...`
+    - user.name を大文字化して upperName に
+    - user.age + 10 を agePlus10 に
 
     元コード:
     function processUser(user: any) {
@@ -184,17 +188,20 @@
   prompt: |
     TypeScriptで次の関数を修正してください（解説不要、コードのみ）。
     バグ: forEach内のawaitが効かず、処理完了前にDone相当が発生します。
-    要求:
-    - saveAll は items と save 関数を受け取り、全件保存が完了してから resolve する Promise を返す
-    - exports: `export async function saveAll(...)`
-    - forEach は使わない
+
+    エクスポート:
+    - export async function saveAll(items: string[], save: (item: string) => Promise<void>): Promise<void>
+
+    要件:
+    - items 配列の各要素に対して save 関数を呼び出す
+    - 全件の save が完了してから resolve する
+    - forEach は使わない（for...of または Promise.all を使用）
 
     参考(バグコード):
-    async function saveAll(items: string[]) {
+    async function saveAll(items: string[], save: (item: string) => Promise<void>) {
         items.forEach(async (item) => {
-            await db.save(item);
+            await save(item);
         });
-        console.log("Done");
     }
   tests:
     tests/solution.test.ts: |
@@ -605,11 +612,16 @@
   prompt: |
     シンプルなKey-Valueストレージを実装してください。解説不要、コードのみ。
 
+    エクスポート:
+    - export class Storage
+      - set(key: string, value: any, options?: { ttl?: number }): void  // ttl はミリ秒
+      - get(key: string): any | undefined
+      - delete(key: string): void
+      - has(key: string): boolean
+
     要件:
     - キーと値の保存・取得・削除
-    - 有効期限（TTL）のサポート
-
-    実装の詳細はお任せします。
+    - TTL経過後は get で undefined を返す
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";

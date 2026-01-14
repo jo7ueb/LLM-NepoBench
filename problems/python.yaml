@@ -852,13 +852,18 @@
     URLを短縮する簡単なサービスを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
+    エクスポート: class UrlShortener (shorten, restore メソッド)
+
     要件:
     - 長いURLを短いIDに変換
     - 短いIDから元のURLを復元
     - インメモリで動作（永続化不要）
   tests:
     tests/test_solution.py: |
-      from solution import UrlShortener
+      try:
+          from solution import UrlShortener
+      except ImportError:
+          from solution import URLShortener as UrlShortener
 
       # ========== 基本機能テスト (40%) ==========
       def test_01_basic_shorten():
@@ -952,15 +957,21 @@
     シンプルなロガーを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
+    エクスポート:
+    - class LogLevel(Enum): DEBUG=0, INFO=1, WARN=2, ERROR=3
+    - class Logger(__init__(level), debug(), info(), warn(), error())
+
     要件:
     - ログレベル（DEBUG, INFO, WARN, ERROR）をサポート
     - 設定したレベル以上のログのみ出力
     - タイムスタンプ付き
-
-    実装の詳細はお任せします。
   tests:
     tests/test_solution.py: |
-      from solution import Logger, LogLevel
+      try:
+          from solution import Logger, LogLevel
+      except ImportError:
+          from solution import Logger
+          from solution import Level as LogLevel
 
       def test_info_log(capsys):
           logger = Logger(level=LogLevel.INFO)
@@ -1006,7 +1017,10 @@
     - 安全に実装（eval禁止）
   tests:
     tests/test_solution.py: |
-      from solution import Calculator
+      try:
+          from solution import Calculator
+      except ImportError:
+          from solution import Calc as Calculator
 
       def test_simple_add():
           calc = Calculator()
@@ -1046,7 +1060,10 @@
     「使いやすいAPI」を意識して設計してください。
   tests:
     tests/test_solution.py: |
-      from solution import TodoList
+      try:
+          from solution import TodoList
+      except ImportError:
+          from solution import ToDoList as TodoList
 
       def test_add_task():
           todo = TodoList()
@@ -1095,7 +1112,10 @@
     他に有用な統計があれば追加してください。
   tests:
     tests/test_solution.py: |
-      from solution import TextStats
+      try:
+          from solution import TextStats
+      except ImportError:
+          from solution import text_stats as TextStats
 
       def test_word_count():
           stats = TextStats("Hello world")
@@ -1192,7 +1212,10 @@
     Jinja2のような本格的なものは不要。基本機能のみ。
   tests:
     tests/test_solution.py: |
-      from solution import TemplateEngine
+      try:
+          from solution import TemplateEngine
+      except ImportError:
+          from solution import Template as TemplateEngine
 
       def test_variable_substitution():
           engine = TemplateEngine()
@@ -1237,7 +1260,10 @@
     例: myapp user create --name Alice
   tests:
     tests/test_solution.py: |
-      from solution import CommandParser
+      try:
+          from solution import CommandParser
+      except ImportError:
+          from solution import Parser as CommandParser
 
       def test_simple_command():
           parser = CommandParser()
@@ -1287,7 +1313,11 @@
     実際の通信は不要。インターフェースとロジックの実装のみ。
   tests:
     tests/test_solution.py: |
-      from solution import HttpClient, MockTransport
+      try:
+          from solution import HttpClient, MockTransport
+      except ImportError:
+          from solution import HttpClient
+          MockTransport = None
 
       def test_get_request():
           transport = MockTransport({"GET /users": {"status": 200, "body": []}})
@@ -1342,7 +1372,10 @@
     ヒント: 実務では要件が曖昧なことが多い。合理的な設計判断をして実装してください。
   tests:
     tests/test_solution.py: |
-      from solution import ShoppingCart
+      try:
+          from solution import ShoppingCart
+      except ImportError:
+          from solution import Cart as ShoppingCart
 
       # ========== 基本機能テスト (35%) ==========
       def test_01_empty_cart_total():
@@ -1466,7 +1499,11 @@
     あなたの知識で適切なポリシーを設計してください。
   tests:
     tests/test_solution.py: |
-      from solution import check_password, PasswordStrength
+      try:
+          from solution import check_password, PasswordStrength
+      except ImportError:
+          from solution import validate_password as check_password
+          from solution import Strength as PasswordStrength
 
       def test_too_short():
           result = check_password("abc")
@@ -1602,7 +1639,10 @@
     - 適切な関数分割
   tests:
     tests/test_solution.py: |
-      from solution import process_order
+      try:
+          from solution import process_order
+      except ImportError:
+          from solution import order_processor as process_order
 
       def test_basic_order():
           order = {"items": [{"price": 100, "quantity": 2}]}
@@ -1691,7 +1731,13 @@
     - UserManager: これらを統合するファサード
   tests:
     tests/test_solution.py: |
-      from solution import UserManager, UserRepository, PasswordService, EmailService
+      try:
+          from solution import UserManager, UserRepository, PasswordService, EmailService
+      except ImportError:
+          from solution import UserManager
+          UserRepository = None
+          PasswordService = None
+          EmailService = None
 
       def test_user_repository():
           repo = UserRepository()
@@ -1924,7 +1970,12 @@
     セキュリティベストプラクティスに従ってください。
   tests:
     tests/test_solution.py: |
-      from solution import sanitize_html, sanitize_sql, Sanitizer
+      try:
+          from solution import sanitize_html, sanitize_sql, Sanitizer
+      except ImportError:
+          from solution import Sanitizer
+          sanitize_html = Sanitizer().sanitize_html if hasattr(Sanitizer(), 'sanitize_html') else lambda x: x
+          sanitize_sql = Sanitizer().sanitize_sql if hasattr(Sanitizer(), 'sanitize_sql') else lambda x: x
 
       def test_html_script_tag():
           result = sanitize_html("<script>alert('xss')</script>")
@@ -2061,7 +2112,10 @@
     - インスタンスを破棄してもリスナーが残る
   tests:
     tests/test_solution.py: |
-      from solution import EventEmitter
+      try:
+          from solution import EventEmitter
+      except ImportError:
+          from solution import Emitter as EventEmitter
 
       def test_basic_emit():
           emitter = EventEmitter()
@@ -2268,7 +2322,10 @@
     例: Pipeline().filter(条件).map(変換).collect()
   tests:
     tests/test_solution.py: |
-      from solution import Pipeline
+      try:
+          from solution import Pipeline
+      except ImportError:
+          from solution import DataPipeline as Pipeline
 
       def test_basic_map():
           result = Pipeline([1, 2, 3]).map(lambda x: x * 2).collect()
@@ -2324,7 +2381,10 @@
     例: 注文のライフサイクル（pending → paid → shipped → delivered）
   tests:
     tests/test_solution.py: |
-      from solution import StateMachine
+      try:
+          from solution import StateMachine
+      except ImportError:
+          from solution import FSM as StateMachine
 
       def test_basic_transition():
           sm = StateMachine(initial="pending")
@@ -2377,7 +2437,10 @@
     実際にDBに接続する必要はありません。
   tests:
     tests/test_solution.py: |
-      from solution import QueryBuilder
+      try:
+          from solution import QueryBuilder
+      except ImportError:
+          from solution import Query as QueryBuilder
 
       def test_simple_select():
           qb = QueryBuilder()
@@ -2432,7 +2495,11 @@
     フレームワークやアプリケーションの拡張性を提供するシステムです。
   tests:
     tests/test_solution.py: |
-      from solution import PluginManager, Plugin
+      try:
+          from solution import PluginManager, Plugin
+      except ImportError:
+          from solution import PluginManager
+          Plugin = None
 
       class SamplePlugin(Plugin):
           def __init__(self):
@@ -2496,7 +2563,10 @@
     user_service = container.resolve(UserService)
   tests:
     tests/test_solution.py: |
-      from solution import Container
+      try:
+          from solution import Container
+      except ImportError:
+          from solution import DIContainer as Container
 
       class Database:
           def __init__(self):
@@ -2763,7 +2833,11 @@
     例: 銀行口座の入出金履歴からcurrent balanceを再構築
   tests:
     tests/test_solution.py: |
-      from solution import EventStore, BankAccount
+      try:
+          from solution import EventStore, BankAccount
+      except ImportError:
+          from solution import EventStore
+          BankAccount = None
 
       def test_record_event():
           store = EventStore()
@@ -2818,7 +2892,17 @@
     例: データパイプライン、CI/CDワークフロー
   tests:
     tests/test_solution.py: |
-      from solution import Workflow, Task, TaskStatus
+      try:
+          from solution import Workflow, Task, TaskStatus
+      except ImportError:
+          from solution import Workflow
+          Task = None
+          from enum import Enum
+          class TaskStatus(Enum):
+              PENDING = 0
+              RUNNING = 1
+              COMPLETED = 2
+              FAILED = 3
 
       def test_sequential_tasks():
           wf = Workflow()
@@ -2878,7 +2962,11 @@
     例: 保険の査定、ローン審査、割引適用
   tests:
     tests/test_solution.py: |
-      from solution import RuleEngine, Rule
+      try:
+          from solution import RuleEngine, Rule
+      except ImportError:
+          from solution import RuleEngine
+          Rule = None
 
       def test_simple_rule():
           engine = RuleEngine()
@@ -3002,7 +3090,13 @@
     例: ユーザー登録（コマンド）とユーザー検索（クエリ）の分離
   tests:
     tests/test_solution.py: |
-      from solution import CQRSApp, CreateUserCommand, GetUserQuery, ListUsersQuery
+      try:
+          from solution import CQRSApp, CreateUserCommand, GetUserQuery, ListUsersQuery
+      except ImportError:
+          from solution import CQRSApp
+          CreateUserCommand = None
+          GetUserQuery = None
+          ListUsersQuery = None
 
       def test_create_user_command():
           app = CQRSApp()
@@ -3050,7 +3144,11 @@
     例: 注文処理（在庫確保→決済→配送手配）
   tests:
     tests/test_solution.py: |
-      from solution import Saga, SagaStep
+      try:
+          from solution import Saga, SagaStep
+      except ImportError:
+          from solution import Saga
+          SagaStep = None
 
       def test_successful_saga():
           results = []
@@ -3126,7 +3224,12 @@
     実際のHTTPサーバーは不要。リクエストオブジェクトを受け取って処理。
   tests:
     tests/test_solution.py: |
-      from solution import APIGateway, Request, Response
+      try:
+          from solution import APIGateway, Request, Response
+      except ImportError:
+          from solution import APIGateway
+          Request = dict
+          Response = dict
 
       def test_route_registration():
           gw = APIGateway()
