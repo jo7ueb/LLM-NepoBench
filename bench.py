@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--langs", default="python,typescript,go", help="comma-separated, e.g. python,go")
     p.add_argument("--runs", type=int, default=3)
     p.add_argument("--temperature", type=float, default=0.1)
-    p.add_argument("--max-tokens", type=int, default=1024)
+    p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--docker-timeout", type=int, default=45, help="seconds for docker test run")
     p.add_argument("--out", default="results.csv")
     return p.parse_args()
@@ -258,8 +258,8 @@ def extract_failure_reason(rc: int, log: str, lang: str) -> Tuple[str, str]:
     # rc=2: コード実行前のエラー
     if rc == 2:
         if "syntaxerror" in log_lower:
-            if "unterminated" in log_lower:
-                return "LLM", "構文エラー（コード途中で切れている）"
+            if "unterminated" in log_lower or "eof" in log_lower:
+                return "ENV", "max_tokens不足（コードが途中で切れた）"
             return "LLM", "構文エラー"
         if "importerror" in log_lower or "cannot import" in log_lower:
             match = re.search(r"cannot import name '(\w+)'", log)
