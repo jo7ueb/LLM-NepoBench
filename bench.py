@@ -356,7 +356,7 @@ def main() -> None:
             resp = client.chat.completions.create(
                 model=args.model,
                 messages=[
-                    {"role": "system", "content": f"You are an expert {prob.lang} developer. Output code only."},
+                    {"role": "system", "content": f"You are an expert {prob.lang} developer. Output code only. Do NOT use external APIs or LLM libraries. Use only standard library and built-in features."},
                     {"role": "user", "content": prob.prompt},
                 ],
                 temperature=args.temperature,
