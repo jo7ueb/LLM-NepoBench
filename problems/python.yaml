@@ -834,7 +834,433 @@
 # =============================================================================
 # エージェント能力評価問題（Agent-Level Challenges）
 # 曖昧な要件、設計判断、エッジケース発見、リファクタリング等
+#
+# 難易度レベル:
+#   Level 1 (★☆☆☆) - Easy:    基本的な設計判断、少しだけ曖昧な要件
+#   Level 2 (★★☆☆) - Medium:  中程度の曖昧さ、複数の設計判断が必要
+#   Level 3 (★★★☆) - Hard:    複雑な設計判断、複数の技術領域にまたがる
+#   Level 4 (★★★★) - Expert:  実務レベルの複雑な問題、多くの考慮事項
 # =============================================================================
+
+# =============================================================================
+# Level 1 (★☆☆☆) - Easy: 入門レベルのエージェント問題
+# =============================================================================
+
+- id: py_agent_L1_url_shortener
+  lang: python
+  prompt: |
+    URLを短縮する簡単なサービスを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 長いURLを短いIDに変換
+    - 短いIDから元のURLを復元
+    - インメモリで動作（永続化不要）
+  tests:
+    tests/test_solution.py: |
+      from solution import UrlShortener
+
+      def test_shorten_and_restore():
+          shortener = UrlShortener()
+          short_id = shortener.shorten("https://example.com/very/long/path")
+          original = shortener.restore(short_id)
+          assert original == "https://example.com/very/long/path"
+
+      def test_short_id_is_short():
+          shortener = UrlShortener()
+          short_id = shortener.shorten("https://example.com/a/b/c/d/e/f")
+          assert len(short_id) <= 10
+
+      def test_same_url_different_ids_or_same():
+          shortener = UrlShortener()
+          id1 = shortener.shorten("https://example.com")
+          id2 = shortener.shorten("https://example.com")
+          # 同じURLは同じIDでも異なるIDでも可
+          assert shortener.restore(id1) == shortener.restore(id2)
+
+      def test_invalid_id():
+          shortener = UrlShortener()
+          result = shortener.restore("nonexistent")
+          assert result is None
+
+
+- id: py_agent_L1_logger
+  lang: python
+  prompt: |
+    シンプルなロガーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - ログレベル（DEBUG, INFO, WARN, ERROR）をサポート
+    - 設定したレベル以上のログのみ出力
+    - タイムスタンプ付き
+
+    実装の詳細はお任せします。
+  tests:
+    tests/test_solution.py: |
+      from solution import Logger, LogLevel
+
+      def test_info_log(capsys):
+          logger = Logger(level=LogLevel.INFO)
+          logger.info("test message")
+          captured = capsys.readouterr()
+          assert "test message" in captured.out
+          assert "INFO" in captured.out
+
+      def test_level_filtering(capsys):
+          logger = Logger(level=LogLevel.WARN)
+          logger.debug("debug msg")
+          logger.info("info msg")
+          logger.warn("warn msg")
+          captured = capsys.readouterr()
+          assert "debug msg" not in captured.out
+          assert "info msg" not in captured.out
+          assert "warn msg" in captured.out
+
+      def test_timestamp_present(capsys):
+          logger = Logger(level=LogLevel.INFO)
+          logger.info("test")
+          captured = capsys.readouterr()
+          # タイムスタンプが含まれている（数字とコロンの組み合わせ）
+          import re
+          assert re.search(r'\d{2}:\d{2}:\d{2}', captured.out) or re.search(r'\d{4}-\d{2}-\d{2}', captured.out)
+
+      def test_error_log(capsys):
+          logger = Logger(level=LogLevel.DEBUG)
+          logger.error("error occurred")
+          captured = capsys.readouterr()
+          assert "ERROR" in captured.out
+
+
+- id: py_agent_L1_calculator
+  lang: python
+  prompt: |
+    文字列の数式を評価する電卓を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 四則演算（+, -, *, /）をサポート
+    - カッコ対応
+    - 安全に実装（eval禁止）
+  tests:
+    tests/test_solution.py: |
+      from solution import Calculator
+
+      def test_simple_add():
+          calc = Calculator()
+          assert calc.evaluate("2 + 3") == 5
+
+      def test_multiply():
+          calc = Calculator()
+          assert calc.evaluate("4 * 5") == 20
+
+      def test_precedence():
+          calc = Calculator()
+          assert calc.evaluate("2 + 3 * 4") == 14
+
+      def test_parentheses():
+          calc = Calculator()
+          assert calc.evaluate("(2 + 3) * 4") == 20
+
+      def test_nested_parentheses():
+          calc = Calculator()
+          assert calc.evaluate("((1 + 2) * (3 + 4))") == 21
+
+      def test_division():
+          calc = Calculator()
+          assert calc.evaluate("10 / 2") == 5
+
+
+- id: py_agent_L1_todo_list
+  lang: python
+  prompt: |
+    シンプルなToDoリスト管理クラスを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    基本要件:
+    - タスクの追加・削除・完了
+    - 一覧表示
+
+    「使いやすいAPI」を意識して設計してください。
+  tests:
+    tests/test_solution.py: |
+      from solution import TodoList
+
+      def test_add_task():
+          todo = TodoList()
+          task_id = todo.add("Buy milk")
+          assert task_id is not None
+          tasks = todo.list_all()
+          assert len(tasks) == 1
+
+      def test_complete_task():
+          todo = TodoList()
+          task_id = todo.add("Buy milk")
+          todo.complete(task_id)
+          task = todo.get(task_id)
+          assert task["completed"] is True
+
+      def test_delete_task():
+          todo = TodoList()
+          task_id = todo.add("Buy milk")
+          todo.delete(task_id)
+          assert todo.get(task_id) is None
+
+      def test_list_pending():
+          todo = TodoList()
+          todo.add("Task 1")
+          id2 = todo.add("Task 2")
+          todo.complete(id2)
+          pending = todo.list_pending()
+          assert len(pending) == 1
+
+      def test_task_has_title():
+          todo = TodoList()
+          task_id = todo.add("Important task")
+          task = todo.get(task_id)
+          assert task["title"] == "Important task"
+
+
+- id: py_agent_L1_text_stats
+  lang: python
+  prompt: |
+    テキストの統計情報を計算するクラスを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    最低限の要件:
+    - 単語数、文字数、行数をカウント
+
+    他に有用な統計があれば追加してください。
+  tests:
+    tests/test_solution.py: |
+      from solution import TextStats
+
+      def test_word_count():
+          stats = TextStats("Hello world")
+          assert stats.word_count() == 2
+
+      def test_char_count():
+          stats = TextStats("Hello")
+          assert stats.char_count() == 5
+
+      def test_line_count():
+          stats = TextStats("Line 1\nLine 2\nLine 3")
+          assert stats.line_count() == 3
+
+      def test_empty_text():
+          stats = TextStats("")
+          assert stats.word_count() == 0
+          assert stats.line_count() == 0
+
+      def test_average_word_length():
+          stats = TextStats("cat dog bird")
+          avg = stats.average_word_length()
+          assert 3.0 <= avg <= 4.0  # (3+3+4)/3 ≈ 3.33
+
+
+# =============================================================================
+# Level 2 (★★☆☆) - Medium: 中級レベルのエージェント問題
+# =============================================================================
+
+- id: py_agent_L2_scheduler
+  lang: python
+  prompt: |
+    タスクスケジューラを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 指定時間後にタスクを実行
+    - 定期実行（interval）
+    - タスクのキャンセル
+
+    実際の並行処理は不要。シミュレーションでOK。
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import Scheduler
+
+      def test_schedule_once():
+          scheduler = Scheduler()
+          results = []
+          scheduler.schedule(lambda: results.append("done"), delay=0.05)
+          scheduler.run_pending()
+          time.sleep(0.1)
+          scheduler.run_pending()
+          assert "done" in results
+
+      def test_schedule_interval():
+          scheduler = Scheduler()
+          count = [0]
+          task_id = scheduler.schedule_interval(lambda: count.__setitem__(0, count[0]+1), interval=0.05)
+          for _ in range(5):
+              time.sleep(0.06)
+              scheduler.run_pending()
+          assert count[0] >= 3
+
+      def test_cancel_task():
+          scheduler = Scheduler()
+          results = []
+          task_id = scheduler.schedule(lambda: results.append("done"), delay=0.1)
+          scheduler.cancel(task_id)
+          time.sleep(0.15)
+          scheduler.run_pending()
+          assert "done" not in results
+
+      def test_multiple_tasks():
+          scheduler = Scheduler()
+          results = []
+          scheduler.schedule(lambda: results.append("a"), delay=0.02)
+          scheduler.schedule(lambda: results.append("b"), delay=0.01)
+          time.sleep(0.05)
+          scheduler.run_pending()
+          assert "a" in results and "b" in results
+
+
+- id: py_agent_L2_template_engine
+  lang: python
+  prompt: |
+    シンプルなテンプレートエンジンを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 変数の置換 {{ name }}
+    - 条件分岐 {% if condition %}...{% endif %}
+    - ループ {% for item in items %}...{% endfor %}
+
+    Jinja2のような本格的なものは不要。基本機能のみ。
+  tests:
+    tests/test_solution.py: |
+      from solution import TemplateEngine
+
+      def test_variable_substitution():
+          engine = TemplateEngine()
+          result = engine.render("Hello {{ name }}!", {"name": "World"})
+          assert result == "Hello World!"
+
+      def test_if_true():
+          engine = TemplateEngine()
+          result = engine.render("{% if show %}Visible{% endif %}", {"show": True})
+          assert "Visible" in result
+
+      def test_if_false():
+          engine = TemplateEngine()
+          result = engine.render("{% if show %}Visible{% endif %}", {"show": False})
+          assert "Visible" not in result
+
+      def test_for_loop():
+          engine = TemplateEngine()
+          template = "{% for item in items %}{{ item }},{% endfor %}"
+          result = engine.render(template, {"items": ["a", "b", "c"]})
+          assert "a" in result and "b" in result and "c" in result
+
+      def test_combined():
+          engine = TemplateEngine()
+          template = "Users: {% for u in users %}{{ u }}{% endfor %}"
+          result = engine.render(template, {"users": ["Alice", "Bob"]})
+          assert "Alice" in result and "Bob" in result
+
+
+- id: py_agent_L2_command_parser
+  lang: python
+  prompt: |
+    CLIコマンドパーサーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - サブコマンドのサポート
+    - 位置引数とオプション引数
+    - ヘルプ生成
+    - バリデーション
+
+    例: myapp user create --name Alice
+  tests:
+    tests/test_solution.py: |
+      from solution import CommandParser
+
+      def test_simple_command():
+          parser = CommandParser()
+          parser.add_command("greet", lambda args: f"Hello {args['name']}")
+          parser.add_argument("greet", "name", required=True)
+          result = parser.parse_and_execute(["greet", "--name", "Alice"])
+          assert result == "Hello Alice"
+
+      def test_subcommand():
+          parser = CommandParser()
+          parser.add_command("user")
+          parser.add_subcommand("user", "create", lambda args: f"Created {args['name']}")
+          parser.add_argument("user.create", "name", required=True)
+          result = parser.parse_and_execute(["user", "create", "--name", "Bob"])
+          assert "Created Bob" in result
+
+      def test_optional_argument():
+          parser = CommandParser()
+          parser.add_command("greet", lambda args: f"Hello {args.get('name', 'World')}")
+          parser.add_argument("greet", "name", required=False, default="World")
+          result = parser.parse_and_execute(["greet"])
+          assert result == "Hello World"
+
+      def test_missing_required():
+          parser = CommandParser()
+          parser.add_command("test", lambda args: "ok")
+          parser.add_argument("test", "required_arg", required=True)
+          try:
+              parser.parse_and_execute(["test"])
+              assert False
+          except (ValueError, SystemExit, Exception):
+              pass
+
+
+- id: py_agent_L2_http_client
+  lang: python
+  prompt: |
+    HTTPクライアントのラッパーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - リトライ機能
+    - タイムアウト設定
+    - レスポンスのキャッシュ
+    - 共通ヘッダの設定
+
+    実際の通信は不要。インターフェースとロジックの実装のみ。
+  tests:
+    tests/test_solution.py: |
+      from solution import HttpClient, MockTransport
+
+      def test_get_request():
+          transport = MockTransport({"GET /users": {"status": 200, "body": []}})
+          client = HttpClient(transport=transport)
+          resp = client.get("/users")
+          assert resp.status == 200
+
+      def test_common_headers():
+          transport = MockTransport({"GET /api": {"status": 200, "body": {}}})
+          client = HttpClient(transport=transport, headers={"Authorization": "Bearer token"})
+          client.get("/api")
+          assert transport.last_request["headers"]["Authorization"] == "Bearer token"
+
+      def test_retry_on_failure():
+          attempts = [0]
+          def failing_transport(method, url, **kwargs):
+              attempts[0] += 1
+              if attempts[0] < 3:
+                  raise ConnectionError("fail")
+              return {"status": 200, "body": {}}
+          client = HttpClient(transport=failing_transport, retries=3)
+          resp = client.get("/api")
+          assert resp.status == 200
+          assert attempts[0] == 3
+
+      def test_cache():
+          call_count = [0]
+          def counting_transport(method, url, **kwargs):
+              call_count[0] += 1
+              return {"status": 200, "body": {"data": "value"}}
+          client = HttpClient(transport=counting_transport, cache_ttl=60)
+          client.get("/api")
+          client.get("/api")
+          assert call_count[0] == 1  # cached
+
 
 # -----------------------------------------------------------------------------
 # カテゴリ: 曖昧な要件からの実装（Vague Requirements）
@@ -1748,3 +2174,739 @@
       def test_take():
           result = Pipeline(range(100)).take(5).collect()
           assert result == [0, 1, 2, 3, 4]
+
+
+# =============================================================================
+# Level 3 (★★★☆) - Hard: 上級レベルのエージェント問題
+# =============================================================================
+
+- id: py_agent_L3_state_machine
+  lang: python
+  prompt: |
+    汎用的な有限状態マシン（FSM）を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 状態と遷移の定義
+    - 無効な遷移の検出
+    - 遷移時のコールバック
+
+    例: 注文のライフサイクル（pending → paid → shipped → delivered）
+  tests:
+    tests/test_solution.py: |
+      from solution import StateMachine
+
+      def test_basic_transition():
+          sm = StateMachine(initial="pending")
+          sm.add_transition("pending", "paid", "pay")
+          sm.add_transition("paid", "shipped", "ship")
+          assert sm.state == "pending"
+          sm.trigger("pay")
+          assert sm.state == "paid"
+          sm.trigger("ship")
+          assert sm.state == "shipped"
+
+      def test_invalid_transition():
+          sm = StateMachine(initial="pending")
+          sm.add_transition("pending", "paid", "pay")
+          try:
+              sm.trigger("ship")  # invalid from pending
+              assert False
+          except (ValueError, Exception):
+              pass
+
+      def test_callback():
+          sm = StateMachine(initial="off")
+          sm.add_transition("off", "on", "toggle")
+          sm.add_transition("on", "off", "toggle")
+          calls = []
+          sm.on_enter("on", lambda: calls.append("entered on"))
+          sm.trigger("toggle")
+          assert "entered on" in calls
+
+      def test_available_transitions():
+          sm = StateMachine(initial="pending")
+          sm.add_transition("pending", "paid", "pay")
+          sm.add_transition("pending", "cancelled", "cancel")
+          available = sm.available_triggers()
+          assert "pay" in available
+          assert "cancel" in available
+
+
+- id: py_agent_L3_query_builder
+  lang: python
+  prompt: |
+    SQLクエリビルダーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - SELECT, WHERE, JOIN, ORDER BY をサポート
+    - メソッドチェーンで組み立て
+    - SQLインジェクション対策（プレースホルダー使用）
+
+    実際にDBに接続する必要はありません。
+  tests:
+    tests/test_solution.py: |
+      from solution import QueryBuilder
+
+      def test_simple_select():
+          qb = QueryBuilder()
+          query, params = qb.select("users").build()
+          assert "SELECT" in query.upper()
+          assert "users" in query.lower()
+
+      def test_select_with_columns():
+          qb = QueryBuilder()
+          query, params = qb.select("users", ["id", "name"]).build()
+          assert "id" in query
+          assert "name" in query
+
+      def test_where_clause():
+          qb = QueryBuilder()
+          query, params = qb.select("users").where("age", ">", 18).build()
+          assert "WHERE" in query.upper()
+          assert 18 in params or "18" in query
+
+      def test_multiple_where():
+          qb = QueryBuilder()
+          query, params = (qb.select("users")
+                           .where("age", ">", 18)
+                           .where("status", "=", "active")
+                           .build())
+          assert "AND" in query.upper() or query.upper().count("WHERE") >= 1
+
+      def test_order_by():
+          qb = QueryBuilder()
+          query, params = qb.select("users").order_by("name", "ASC").build()
+          assert "ORDER BY" in query.upper()
+
+      def test_sql_injection_prevention():
+          qb = QueryBuilder()
+          query, params = qb.select("users").where("name", "=", "'; DROP TABLE users;--").build()
+          # クエリに直接値が埋め込まれていない
+          assert "DROP TABLE" not in query
+          assert "'; DROP TABLE users;--" in params
+
+
+- id: py_agent_L3_plugin_system
+  lang: python
+  prompt: |
+    プラグインシステムを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - プラグインの登録と読み込み
+    - プラグインのライフサイクル管理（有効化/無効化）
+    - フック/イベントポイントでの拡張
+
+    フレームワークやアプリケーションの拡張性を提供するシステムです。
+  tests:
+    tests/test_solution.py: |
+      from solution import PluginManager, Plugin
+
+      class SamplePlugin(Plugin):
+          def __init__(self):
+              self.activated = False
+          def activate(self):
+              self.activated = True
+          def deactivate(self):
+              self.activated = False
+
+      def test_register_plugin():
+          manager = PluginManager()
+          plugin = SamplePlugin()
+          manager.register("sample", plugin)
+          assert "sample" in manager.list_plugins()
+
+      def test_activate_plugin():
+          manager = PluginManager()
+          plugin = SamplePlugin()
+          manager.register("sample", plugin)
+          manager.activate("sample")
+          assert plugin.activated is True
+
+      def test_deactivate_plugin():
+          manager = PluginManager()
+          plugin = SamplePlugin()
+          manager.register("sample", plugin)
+          manager.activate("sample")
+          manager.deactivate("sample")
+          assert plugin.activated is False
+
+      def test_hook_system():
+          manager = PluginManager()
+          results = []
+          manager.add_hook("on_start", lambda: results.append("started"))
+          manager.trigger_hook("on_start")
+          assert "started" in results
+
+      def test_plugin_priority():
+          manager = PluginManager()
+          results = []
+          manager.add_hook("test", lambda: results.append("low"), priority=10)
+          manager.add_hook("test", lambda: results.append("high"), priority=1)
+          manager.trigger_hook("test")
+          assert results[0] == "high"  # 優先度が高い方が先
+
+
+- id: py_agent_L3_dependency_injector
+  lang: python
+  prompt: |
+    シンプルな依存性注入（DI）コンテナを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - サービスの登録と解決
+    - シングルトン/ファクトリのライフタイム管理
+    - 依存関係の自動解決
+
+    例:
+    container.register(Database)
+    container.register(UserService, dependencies=[Database])
+    user_service = container.resolve(UserService)
+  tests:
+    tests/test_solution.py: |
+      from solution import Container
+
+      class Database:
+          def __init__(self):
+              self.connected = True
+
+      class UserService:
+          def __init__(self, db: Database):
+              self.db = db
+
+      def test_simple_resolve():
+          container = Container()
+          container.register(Database)
+          db = container.resolve(Database)
+          assert db.connected is True
+
+      def test_dependency_injection():
+          container = Container()
+          container.register(Database)
+          container.register(UserService)
+          svc = container.resolve(UserService)
+          assert svc.db is not None
+          assert svc.db.connected is True
+
+      def test_singleton():
+          container = Container()
+          container.register(Database, singleton=True)
+          db1 = container.resolve(Database)
+          db2 = container.resolve(Database)
+          assert db1 is db2
+
+      def test_factory():
+          container = Container()
+          container.register(Database, singleton=False)
+          db1 = container.resolve(Database)
+          db2 = container.resolve(Database)
+          assert db1 is not db2
+
+      def test_register_instance():
+          container = Container()
+          my_db = Database()
+          container.register_instance(Database, my_db)
+          resolved = container.resolve(Database)
+          assert resolved is my_db
+
+
+- id: py_agent_L3_circuit_breaker
+  lang: python
+  prompt: |
+    サーキットブレーカーパターンを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 連続失敗でサーキットをオープン（リクエスト遮断）
+    - タイムアウト後にハーフオープン状態で再試行
+    - 成功すればクローズ状態に復帰
+
+    マイクロサービスの障害伝播を防ぐパターンです。
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import CircuitBreaker, CircuitState
+
+      def test_closed_state():
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          assert cb.state == CircuitState.CLOSED
+          # 成功は通常通り
+          result = cb.call(lambda: "ok")
+          assert result == "ok"
+
+      def test_open_after_failures():
+          cb = CircuitBreaker(failure_threshold=3, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(3):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          assert cb.state == CircuitState.OPEN
+
+      def test_open_rejects_calls():
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=1.0)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          # オープン状態では即座に例外
+          try:
+              cb.call(lambda: "test")
+              assert False
+          except Exception as e:
+              assert "open" in str(e).lower() or "circuit" in str(e).lower()
+
+      def test_half_open_after_timeout():
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          time.sleep(0.15)
+          assert cb.state == CircuitState.HALF_OPEN
+
+      def test_recovery_to_closed():
+          cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.1)
+          def failing():
+              raise RuntimeError("fail")
+          for _ in range(2):
+              try:
+                  cb.call(failing)
+              except RuntimeError:
+                  pass
+          time.sleep(0.15)
+          # ハーフオープンで成功
+          result = cb.call(lambda: "recovered")
+          assert result == "recovered"
+          assert cb.state == CircuitState.CLOSED
+
+
+- id: py_agent_L3_event_sourcing
+  lang: python
+  prompt: |
+    簡易的なイベントソーシングシステムを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - イベントの記録と再生
+    - 集約（Aggregate）の状態復元
+    - イベントストアの実装
+
+    例: 銀行口座の入出金履歴からcurrent balanceを再構築
+  tests:
+    tests/test_solution.py: |
+      from solution import EventStore, BankAccount
+
+      def test_record_event():
+          store = EventStore()
+          store.append("account-1", {"type": "deposited", "amount": 100})
+          events = store.get_events("account-1")
+          assert len(events) == 1
+
+      def test_replay_events():
+          store = EventStore()
+          store.append("account-1", {"type": "deposited", "amount": 100})
+          store.append("account-1", {"type": "deposited", "amount": 50})
+          store.append("account-1", {"type": "withdrawn", "amount": 30})
+          account = BankAccount.from_events(store.get_events("account-1"))
+          assert account.balance == 120
+
+      def test_multiple_aggregates():
+          store = EventStore()
+          store.append("account-1", {"type": "deposited", "amount": 100})
+          store.append("account-2", {"type": "deposited", "amount": 200})
+          events1 = store.get_events("account-1")
+          events2 = store.get_events("account-2")
+          assert len(events1) == 1
+          assert len(events2) == 1
+
+      def test_event_order():
+          store = EventStore()
+          store.append("acc", {"type": "deposited", "amount": 100})
+          store.append("acc", {"type": "withdrawn", "amount": 50})
+          store.append("acc", {"type": "deposited", "amount": 25})
+          events = store.get_events("acc")
+          assert events[0]["amount"] == 100
+          assert events[1]["amount"] == 50
+          assert events[2]["amount"] == 25
+
+
+# =============================================================================
+# Level 4 (★★★★) - Expert: エキスパートレベルのエージェント問題
+# =============================================================================
+
+- id: py_agent_L4_workflow_engine
+  lang: python
+  prompt: |
+    ワークフローエンジンを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - タスクの定義と依存関係
+    - 並列実行可能なタスクの検出
+    - 失敗時のリトライ/スキップ/中断戦略
+    - 実行状態の追跡
+
+    例: データパイプライン、CI/CDワークフロー
+  tests:
+    tests/test_solution.py: |
+      from solution import Workflow, Task, TaskStatus
+
+      def test_sequential_tasks():
+          wf = Workflow()
+          results = []
+          wf.add_task("a", lambda: results.append("a"))
+          wf.add_task("b", lambda: results.append("b"), depends_on=["a"])
+          wf.run()
+          assert results == ["a", "b"]
+
+      def test_parallel_tasks():
+          wf = Workflow()
+          results = []
+          wf.add_task("a", lambda: results.append("a"))
+          wf.add_task("b", lambda: results.append("b"))
+          wf.add_task("c", lambda: results.append("c"), depends_on=["a", "b"])
+          wf.run()
+          assert "a" in results
+          assert "b" in results
+          assert results[-1] == "c"  # c is last
+
+      def test_task_failure():
+          wf = Workflow()
+          def failing():
+              raise RuntimeError("fail")
+          wf.add_task("a", failing)
+          wf.add_task("b", lambda: "ok", depends_on=["a"])
+          wf.run()
+          assert wf.get_status("a") == TaskStatus.FAILED
+          assert wf.get_status("b") == TaskStatus.SKIPPED
+
+      def test_retry_on_failure():
+          wf = Workflow()
+          attempts = [0]
+          def flaky():
+              attempts[0] += 1
+              if attempts[0] < 3:
+                  raise RuntimeError("flaky")
+              return "ok"
+          wf.add_task("a", flaky, retries=3)
+          wf.run()
+          assert wf.get_status("a") == TaskStatus.COMPLETED
+          assert attempts[0] == 3
+
+
+- id: py_agent_L4_rule_engine
+  lang: python
+  prompt: |
+    ビジネスルールエンジンを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - ルールの定義（条件 + アクション）
+    - ルールの優先度と競合解決
+    - ファクト（入力データ）に対するルール適用
+    - ルールチェーンの実行
+
+    例: 保険の査定、ローン審査、割引適用
+  tests:
+    tests/test_solution.py: |
+      from solution import RuleEngine, Rule
+
+      def test_simple_rule():
+          engine = RuleEngine()
+          engine.add_rule(
+              "adult_discount",
+              condition=lambda facts: facts.get("age", 0) >= 18,
+              action=lambda facts: facts.update({"discount": 10})
+          )
+          facts = {"age": 25, "discount": 0}
+          engine.run(facts)
+          assert facts["discount"] == 10
+
+      def test_rule_not_matched():
+          engine = RuleEngine()
+          engine.add_rule(
+              "adult_discount",
+              condition=lambda facts: facts.get("age", 0) >= 18,
+              action=lambda facts: facts.update({"discount": 10})
+          )
+          facts = {"age": 15, "discount": 0}
+          engine.run(facts)
+          assert facts["discount"] == 0
+
+      def test_multiple_rules():
+          engine = RuleEngine()
+          engine.add_rule(
+              "base_discount",
+              condition=lambda f: f.get("member", False),
+              action=lambda f: f.update({"discount": f.get("discount", 0) + 5})
+          )
+          engine.add_rule(
+              "bulk_discount",
+              condition=lambda f: f.get("quantity", 0) >= 10,
+              action=lambda f: f.update({"discount": f.get("discount", 0) + 10})
+          )
+          facts = {"member": True, "quantity": 15, "discount": 0}
+          engine.run(facts)
+          assert facts["discount"] == 15
+
+      def test_priority():
+          engine = RuleEngine()
+          results = []
+          engine.add_rule("low", lambda f: True, lambda f: results.append("low"), priority=10)
+          engine.add_rule("high", lambda f: True, lambda f: results.append("high"), priority=1)
+          engine.run({})
+          assert results[0] == "high"
+
+
+- id: py_agent_L4_distributed_lock
+  lang: python
+  prompt: |
+    分散ロック機構を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - ロックの取得と解放
+    - タイムアウト付きの取得
+    - 自動期限切れ（TTL）
+    - ロック所有者の検証
+
+    注: 実際のネットワーク通信は不要。インメモリでの実装でOK。
+    分散システムでの利用を想定した設計を意識してください。
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import DistributedLock, LockManager
+
+      def test_acquire_release():
+          manager = LockManager()
+          lock = manager.acquire("resource-1", owner="client-a")
+          assert lock is not None
+          manager.release("resource-1", owner="client-a")
+          # 解放後は他のクライアントが取得可能
+          lock2 = manager.acquire("resource-1", owner="client-b")
+          assert lock2 is not None
+
+      def test_lock_contention():
+          manager = LockManager()
+          manager.acquire("resource-1", owner="client-a")
+          # 別のオーナーは取得できない
+          lock2 = manager.acquire("resource-1", owner="client-b", timeout=0.1)
+          assert lock2 is None
+
+      def test_wrong_owner_release():
+          manager = LockManager()
+          manager.acquire("resource-1", owner="client-a")
+          # 別のオーナーは解放できない
+          released = manager.release("resource-1", owner="client-b")
+          assert released is False
+
+      def test_ttl_expiration():
+          manager = LockManager()
+          manager.acquire("resource-1", owner="client-a", ttl=0.1)
+          time.sleep(0.15)
+          # TTL切れで他のクライアントが取得可能
+          lock = manager.acquire("resource-1", owner="client-b")
+          assert lock is not None
+
+      def test_extend_lock():
+          manager = LockManager()
+          manager.acquire("resource-1", owner="client-a", ttl=0.1)
+          manager.extend("resource-1", owner="client-a", ttl=1.0)
+          time.sleep(0.15)
+          # 延長されたのでまだロック中
+          lock = manager.acquire("resource-1", owner="client-b", timeout=0)
+          assert lock is None
+
+
+- id: py_agent_L4_cqrs_impl
+  lang: python
+  prompt: |
+    CQRS（Command Query Responsibility Segregation）パターンを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - コマンドハンドラ（書き込み）
+    - クエリハンドラ（読み取り）
+    - コマンドとクエリの分離
+    - イベントによる読み取りモデルの更新
+
+    例: ユーザー登録（コマンド）とユーザー検索（クエリ）の分離
+  tests:
+    tests/test_solution.py: |
+      from solution import CQRSApp, CreateUserCommand, GetUserQuery, ListUsersQuery
+
+      def test_create_user_command():
+          app = CQRSApp()
+          cmd = CreateUserCommand(user_id="u1", name="Alice", email="alice@example.com")
+          result = app.execute_command(cmd)
+          assert result["success"] is True
+
+      def test_get_user_query():
+          app = CQRSApp()
+          app.execute_command(CreateUserCommand("u1", "Alice", "alice@example.com"))
+          query = GetUserQuery(user_id="u1")
+          user = app.execute_query(query)
+          assert user["name"] == "Alice"
+
+      def test_list_users_query():
+          app = CQRSApp()
+          app.execute_command(CreateUserCommand("u1", "Alice", "a@example.com"))
+          app.execute_command(CreateUserCommand("u2", "Bob", "b@example.com"))
+          query = ListUsersQuery()
+          users = app.execute_query(query)
+          assert len(users) == 2
+
+      def test_command_query_separation():
+          app = CQRSApp()
+          # コマンドは状態を変更
+          app.execute_command(CreateUserCommand("u1", "Alice", "a@example.com"))
+          # クエリは状態を変更しない
+          user1 = app.execute_query(GetUserQuery("u1"))
+          user2 = app.execute_query(GetUserQuery("u1"))
+          assert user1 == user2
+
+
+- id: py_agent_L4_saga_pattern
+  lang: python
+  prompt: |
+    Sagaパターン（分散トランザクション）を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 複数ステップのトランザクション
+    - 各ステップの補償アクション（ロールバック）
+    - 失敗時の自動補償実行
+    - オーケストレーション型
+
+    例: 注文処理（在庫確保→決済→配送手配）
+  tests:
+    tests/test_solution.py: |
+      from solution import Saga, SagaStep
+
+      def test_successful_saga():
+          results = []
+          saga = Saga()
+          saga.add_step(
+              "reserve_stock",
+              execute=lambda: results.append("reserved"),
+              compensate=lambda: results.append("unreserved")
+          )
+          saga.add_step(
+              "charge_payment",
+              execute=lambda: results.append("charged"),
+              compensate=lambda: results.append("refunded")
+          )
+          saga.run()
+          assert results == ["reserved", "charged"]
+
+      def test_compensation_on_failure():
+          results = []
+          saga = Saga()
+          saga.add_step(
+              "reserve_stock",
+              execute=lambda: results.append("reserved"),
+              compensate=lambda: results.append("unreserved")
+          )
+          def failing_payment():
+              results.append("charge_attempted")
+              raise RuntimeError("payment failed")
+          saga.add_step(
+              "charge_payment",
+              execute=failing_payment,
+              compensate=lambda: results.append("refunded")
+          )
+          saga.run()
+          # 補償が逆順で実行される
+          assert "unreserved" in results
+          assert "reserved" in results
+
+      def test_partial_compensation():
+          results = []
+          saga = Saga()
+          saga.add_step("step1", lambda: results.append("s1"), lambda: results.append("c1"))
+          saga.add_step("step2", lambda: results.append("s2"), lambda: results.append("c2"))
+          def fail():
+              raise RuntimeError("fail")
+          saga.add_step("step3", fail, lambda: results.append("c3"))
+          saga.run()
+          # step3は実行に失敗したので補償不要、step2,step1の補償が実行
+          assert "c2" in results
+          assert "c1" in results
+          assert "c3" not in results  # step3は実行されていないので補償も不要
+
+      def test_saga_status():
+          saga = Saga()
+          saga.add_step("step1", lambda: None, lambda: None)
+          saga.run()
+          assert saga.status == "completed"
+
+
+- id: py_agent_L4_api_gateway
+  lang: python
+  prompt: |
+    APIゲートウェイのコア機能を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - リクエストルーティング（パスベース）
+    - 認証/認可ミドルウェア
+    - レート制限
+    - レスポンス変換
+    - ヘルスチェックエンドポイント
+
+    実際のHTTPサーバーは不要。リクエストオブジェクトを受け取って処理。
+  tests:
+    tests/test_solution.py: |
+      from solution import APIGateway, Request, Response
+
+      def test_route_registration():
+          gw = APIGateway()
+          gw.route("/users", lambda req: Response(200, {"users": []}))
+          req = Request("GET", "/users")
+          resp = gw.handle(req)
+          assert resp.status == 200
+
+      def test_path_parameters():
+          gw = APIGateway()
+          gw.route("/users/{id}", lambda req: Response(200, {"id": req.params["id"]}))
+          req = Request("GET", "/users/123")
+          resp = gw.handle(req)
+          assert resp.body["id"] == "123"
+
+      def test_auth_middleware():
+          gw = APIGateway()
+          gw.use_auth(lambda req: req.headers.get("Authorization") == "Bearer valid")
+          gw.route("/protected", lambda req: Response(200, {"data": "secret"}))
+          req = Request("GET", "/protected", headers={"Authorization": "Bearer valid"})
+          resp = gw.handle(req)
+          assert resp.status == 200
+          req_invalid = Request("GET", "/protected", headers={})
+          resp_invalid = gw.handle(req_invalid)
+          assert resp_invalid.status == 401
+
+      def test_rate_limiting():
+          gw = APIGateway()
+          gw.rate_limit(max_requests=2, window_seconds=10)
+          gw.route("/api", lambda req: Response(200, {}))
+          req = Request("GET", "/api", client_id="client1")
+          gw.handle(req)
+          gw.handle(req)
+          resp = gw.handle(req)
+          assert resp.status == 429
+
+      def test_not_found():
+          gw = APIGateway()
+          req = Request("GET", "/nonexistent")
+          resp = gw.handle(req)
+          assert resp.status == 404
