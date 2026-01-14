@@ -829,3 +829,922 @@
           result = dict_to_xml({"a": "1", "b": "2"}, "root")
           assert "<a>1</a>" in result
           assert "<b>2</b>" in result
+
+
+# =============================================================================
+# エージェント能力評価問題（Agent-Level Challenges）
+# 曖昧な要件、設計判断、エッジケース発見、リファクタリング等
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# カテゴリ: 曖昧な要件からの実装（Vague Requirements）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_shopping_cart
+  lang: python
+  prompt: |
+    ECサイトのショッピングカート機能を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件（意図的に曖昧）:
+    - カートに商品を追加・削除できる
+    - 合計金額を計算できる
+    - 割引があればよしなに対応
+
+    ヒント: 実務では要件が曖昧なことが多い。合理的な設計判断をして実装してください。
+  tests:
+    tests/test_solution.py: |
+      from solution import ShoppingCart
+
+      def test_add_item():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=2)
+          assert cart.get_total() == 200
+
+      def test_remove_item():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=3)
+          cart.remove_item("apple", quantity=1)
+          assert cart.get_total() == 200
+
+      def test_remove_all():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=2)
+          cart.remove_item("apple")  # 数量指定なしで全削除
+          assert cart.get_total() == 0
+
+      def test_percentage_discount():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=10)
+          cart.apply_discount(percent=10)  # 10%オフ
+          assert cart.get_total() == 900
+
+      def test_fixed_discount():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=5)
+          cart.apply_discount(amount=50)  # 50円引き
+          assert cart.get_total() == 450
+
+      def test_empty_cart():
+          cart = ShoppingCart()
+          assert cart.get_total() == 0
+
+      def test_item_count():
+          cart = ShoppingCart()
+          cart.add_item("apple", price=100, quantity=2)
+          cart.add_item("banana", price=50, quantity=3)
+          assert cart.item_count() == 5
+
+
+- id: py_agent_password_policy
+  lang: python
+  prompt: |
+    パスワードポリシーチェッカーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件（曖昧）:
+    - パスワードの強度をチェックする
+    - 弱いパスワードは拒否
+    - 一般的なセキュリティ要件を考慮
+
+    あなたの知識で適切なポリシーを設計してください。
+  tests:
+    tests/test_solution.py: |
+      from solution import check_password, PasswordStrength
+
+      def test_too_short():
+          result = check_password("abc")
+          assert result.is_valid is False
+          assert "length" in result.reason.lower() or "short" in result.reason.lower()
+
+      def test_no_uppercase():
+          result = check_password("password123!")
+          assert result.is_valid is False
+
+      def test_no_lowercase():
+          result = check_password("PASSWORD123!")
+          assert result.is_valid is False
+
+      def test_no_digit():
+          result = check_password("PasswordTest!")
+          assert result.is_valid is False
+
+      def test_no_special():
+          result = check_password("Password123")
+          assert result.is_valid is False
+
+      def test_valid_password():
+          result = check_password("SecurePass123!")
+          assert result.is_valid is True
+
+      def test_common_password():
+          # "password" や "123456" のような一般的なパスワードは拒否すべき
+          result = check_password("Password1!")
+          # password という単語を含む場合は弱いと判断すべき
+          assert result.strength != PasswordStrength.STRONG
+
+
+- id: py_agent_config_loader
+  lang: python
+  prompt: |
+    アプリケーション設定ローダーを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件（曖昧）:
+    - 設定ファイル（JSON/YAML/環境変数）から設定を読み込む
+    - デフォルト値のサポート
+    - 必須設定のバリデーション
+
+    実務で必要になりそうな機能を適切に設計してください。
+  tests:
+    tests/test_solution.py: |
+      import os
+      from solution import ConfigLoader
+
+      def test_load_from_dict():
+          loader = ConfigLoader({"db_host": "localhost", "db_port": 5432})
+          assert loader.get("db_host") == "localhost"
+          assert loader.get("db_port") == 5432
+
+      def test_default_value():
+          loader = ConfigLoader({})
+          assert loader.get("missing_key", default="default") == "default"
+
+      def test_nested_config():
+          loader = ConfigLoader({"database": {"host": "localhost", "port": 5432}})
+          assert loader.get("database.host") == "localhost"
+          assert loader.get("database.port") == 5432
+
+      def test_env_override():
+          os.environ["APP_DB_HOST"] = "production-db"
+          loader = ConfigLoader({"db_host": "localhost"}, env_prefix="APP_")
+          assert loader.get("db_host") == "production-db"
+          del os.environ["APP_DB_HOST"]
+
+      def test_required_validation():
+          loader = ConfigLoader({})
+          loader.require("api_key")
+          try:
+              loader.validate()
+              assert False, "Should raise error for missing required key"
+          except ValueError as e:
+              assert "api_key" in str(e)
+
+      def test_type_casting():
+          os.environ["APP_PORT"] = "8080"
+          loader = ConfigLoader({}, env_prefix="APP_")
+          assert loader.get("port", type=int) == 8080
+          del os.environ["APP_PORT"]
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: リファクタリング（Refactoring）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_refactor_spaghetti
+  lang: python
+  prompt: |
+    以下のスパゲッティコードをリファクタリングしてください。
+    機能は維持しつつ、可読性・保守性を向上させてください。
+    解説不要。Pythonコードのみ出力してください。
+
+    元コード:
+    ```python
+    def process_order(order_data):
+        if order_data:
+            if "items" in order_data:
+                total = 0
+                for item in order_data["items"]:
+                    if "price" in item and "quantity" in item:
+                        if item["quantity"] > 0:
+                            total += item["price"] * item["quantity"]
+                        else:
+                            return {"error": "invalid quantity"}
+                    else:
+                        return {"error": "missing price or quantity"}
+                if "discount" in order_data:
+                    if order_data["discount"] > 0 and order_data["discount"] <= 100:
+                        total = total * (100 - order_data["discount"]) / 100
+                    else:
+                        return {"error": "invalid discount"}
+                if "tax_rate" in order_data:
+                    if order_data["tax_rate"] >= 0:
+                        total = total * (1 + order_data["tax_rate"] / 100)
+                    else:
+                        return {"error": "invalid tax rate"}
+                return {"total": round(total, 2), "status": "success"}
+            else:
+                return {"error": "no items"}
+        else:
+            return {"error": "no data"}
+    ```
+
+    要件:
+    - 同じ入出力を維持（テストが通ること）
+    - ネストを減らす
+    - 早期リターンパターンを使用
+    - 適切な関数分割
+  tests:
+    tests/test_solution.py: |
+      from solution import process_order
+
+      def test_basic_order():
+          order = {"items": [{"price": 100, "quantity": 2}]}
+          result = process_order(order)
+          assert result["status"] == "success"
+          assert result["total"] == 200
+
+      def test_with_discount():
+          order = {"items": [{"price": 100, "quantity": 1}], "discount": 10}
+          result = process_order(order)
+          assert result["total"] == 90
+
+      def test_with_tax():
+          order = {"items": [{"price": 100, "quantity": 1}], "tax_rate": 10}
+          result = process_order(order)
+          assert result["total"] == 110
+
+      def test_empty_data():
+          result = process_order(None)
+          assert "error" in result
+
+      def test_no_items():
+          result = process_order({})
+          assert result["error"] == "no items"
+
+      def test_invalid_quantity():
+          order = {"items": [{"price": 100, "quantity": -1}]}
+          result = process_order(order)
+          assert result["error"] == "invalid quantity"
+
+      def test_multiple_items():
+          order = {"items": [
+              {"price": 100, "quantity": 2},
+              {"price": 50, "quantity": 3}
+          ]}
+          result = process_order(order)
+          assert result["total"] == 350
+
+
+- id: py_agent_refactor_god_class
+  lang: python
+  prompt: |
+    以下の「神クラス」をリファクタリングしてください。
+    単一責任の原則に従い、適切にクラスを分割してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    元コード:
+    ```python
+    class UserManager:
+        def __init__(self):
+            self.users = {}
+            self.email_log = []
+
+        def create_user(self, user_id, name, email):
+            self.users[user_id] = {"name": name, "email": email, "password": None}
+
+        def set_password(self, user_id, password):
+            if len(password) < 8:
+                raise ValueError("Password too short")
+            import hashlib
+            hashed = hashlib.sha256(password.encode()).hexdigest()
+            self.users[user_id]["password"] = hashed
+
+        def verify_password(self, user_id, password):
+            import hashlib
+            hashed = hashlib.sha256(password.encode()).hexdigest()
+            return self.users[user_id]["password"] == hashed
+
+        def send_welcome_email(self, user_id):
+            email = self.users[user_id]["email"]
+            self.email_log.append({"to": email, "subject": "Welcome!", "sent": True})
+
+        def send_password_reset(self, user_id):
+            email = self.users[user_id]["email"]
+            self.email_log.append({"to": email, "subject": "Password Reset", "sent": True})
+
+        def get_email_history(self, user_id):
+            email = self.users[user_id]["email"]
+            return [e for e in self.email_log if e["to"] == email]
+    ```
+
+    要件:
+    - UserRepository: ユーザーの永続化
+    - PasswordService: パスワード処理
+    - EmailService: メール送信
+    - UserManager: これらを統合するファサード
+  tests:
+    tests/test_solution.py: |
+      from solution import UserManager, UserRepository, PasswordService, EmailService
+
+      def test_user_repository():
+          repo = UserRepository()
+          repo.save("u1", {"name": "Alice", "email": "alice@example.com"})
+          user = repo.find("u1")
+          assert user["name"] == "Alice"
+
+      def test_password_service():
+          svc = PasswordService()
+          hashed = svc.hash_password("secretpass")
+          assert svc.verify_password("secretpass", hashed) is True
+          assert svc.verify_password("wrong", hashed) is False
+
+      def test_password_validation():
+          svc = PasswordService()
+          try:
+              svc.hash_password("short")
+              assert False
+          except ValueError:
+              pass
+
+      def test_email_service():
+          svc = EmailService()
+          svc.send("test@example.com", "Subject", "Body")
+          history = svc.get_history("test@example.com")
+          assert len(history) == 1
+
+      def test_user_manager_integration():
+          manager = UserManager()
+          manager.create_user("u1", "Bob", "bob@example.com")
+          manager.set_password("u1", "securepassword")
+          assert manager.verify_password("u1", "securepassword") is True
+          manager.send_welcome_email("u1")
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: エッジケース発見（Edge Case Discovery）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_date_range
+  lang: python
+  prompt: |
+    日付範囲を扱うユーティリティを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    基本要件:
+    - DateRange クラス（start, end）
+    - 範囲内の日数を計算
+    - 2つの範囲の重複を検出
+
+    注意: 日付処理には多くのエッジケースがあります。
+    実務で問題になりそうなケースを考慮してください。
+  tests:
+    tests/test_solution.py: |
+      from datetime import date
+      from solution import DateRange
+
+      def test_basic_range():
+          r = DateRange(date(2024, 1, 1), date(2024, 1, 10))
+          assert r.days() == 10  # 両端含む
+
+      def test_single_day():
+          r = DateRange(date(2024, 1, 1), date(2024, 1, 1))
+          assert r.days() == 1
+
+      def test_invalid_range():
+          # end < start は例外
+          try:
+              DateRange(date(2024, 1, 10), date(2024, 1, 1))
+              assert False, "Should raise ValueError"
+          except ValueError:
+              pass
+
+      def test_overlap_full():
+          r1 = DateRange(date(2024, 1, 1), date(2024, 1, 10))
+          r2 = DateRange(date(2024, 1, 5), date(2024, 1, 15))
+          assert r1.overlaps(r2) is True
+
+      def test_no_overlap():
+          r1 = DateRange(date(2024, 1, 1), date(2024, 1, 5))
+          r2 = DateRange(date(2024, 1, 10), date(2024, 1, 15))
+          assert r1.overlaps(r2) is False
+
+      def test_adjacent_no_overlap():
+          # 1/5で終わり、1/6で始まる → 重複なし
+          r1 = DateRange(date(2024, 1, 1), date(2024, 1, 5))
+          r2 = DateRange(date(2024, 1, 6), date(2024, 1, 10))
+          assert r1.overlaps(r2) is False
+
+      def test_touch_boundary():
+          # 1/5で両方が境界 → 重複あり
+          r1 = DateRange(date(2024, 1, 1), date(2024, 1, 5))
+          r2 = DateRange(date(2024, 1, 5), date(2024, 1, 10))
+          assert r1.overlaps(r2) is True
+
+      def test_contains():
+          r1 = DateRange(date(2024, 1, 1), date(2024, 1, 31))
+          assert r1.contains(date(2024, 1, 15)) is True
+          assert r1.contains(date(2024, 2, 1)) is False
+
+      def test_year_boundary():
+          # 年をまたぐ範囲
+          r = DateRange(date(2023, 12, 25), date(2024, 1, 5))
+          assert r.days() == 12
+
+
+- id: py_agent_rate_limiter
+  lang: python
+  prompt: |
+    APIレート制限を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    基本要件:
+    - 指定された時間窓内のリクエスト数を制限
+    - クライアントIDごとに制限
+
+    考慮すべき点:
+    - 時間窓の扱い（スライディング/固定）
+    - 同時アクセス
+    - メモリ効率
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import RateLimiter
+
+      def test_basic_limit():
+          limiter = RateLimiter(max_requests=3, window_seconds=10)
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is False  # 4th request blocked
+
+      def test_different_clients():
+          limiter = RateLimiter(max_requests=2, window_seconds=10)
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is False
+          assert limiter.allow("client2") is True  # different client
+
+      def test_window_reset():
+          limiter = RateLimiter(max_requests=2, window_seconds=0.1)
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is True
+          assert limiter.allow("client1") is False
+          time.sleep(0.15)  # wait for window to reset
+          assert limiter.allow("client1") is True
+
+      def test_remaining():
+          limiter = RateLimiter(max_requests=5, window_seconds=10)
+          limiter.allow("client1")
+          limiter.allow("client1")
+          assert limiter.remaining("client1") == 3
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: セキュリティ考慮（Security Awareness）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_secure_token
+  lang: python
+  prompt: |
+    セキュアなトークン生成・検証システムを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - ユーザーIDからトークンを生成
+    - トークンからユーザーIDを復元・検証
+    - 有効期限のサポート
+
+    セキュリティを意識した実装をしてください。
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import TokenService
+
+      def test_generate_and_verify():
+          service = TokenService(secret="my-secret-key")
+          token = service.generate("user123")
+          result = service.verify(token)
+          assert result["user_id"] == "user123"
+          assert result["valid"] is True
+
+      def test_invalid_token():
+          service = TokenService(secret="my-secret-key")
+          result = service.verify("invalid-token")
+          assert result["valid"] is False
+
+      def test_tampered_token():
+          service = TokenService(secret="my-secret-key")
+          token = service.generate("user123")
+          # トークンを改ざん
+          tampered = token[:-5] + "xxxxx"
+          result = service.verify(tampered)
+          assert result["valid"] is False
+
+      def test_different_secret():
+          service1 = TokenService(secret="secret1")
+          service2 = TokenService(secret="secret2")
+          token = service1.generate("user123")
+          result = service2.verify(token)
+          assert result["valid"] is False
+
+      def test_expiration():
+          service = TokenService(secret="my-secret", default_ttl=0.1)
+          token = service.generate("user123")
+          time.sleep(0.15)
+          result = service.verify(token)
+          assert result["valid"] is False
+          assert "expired" in result.get("reason", "").lower()
+
+      def test_token_uniqueness():
+          service = TokenService(secret="my-secret")
+          token1 = service.generate("user123")
+          token2 = service.generate("user123")
+          # 同じユーザーでも毎回異なるトークン
+          assert token1 != token2
+
+
+- id: py_agent_input_sanitizer
+  lang: python
+  prompt: |
+    ユーザー入力のサニタイズ機能を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - HTML/SQLインジェクション対策
+    - XSS対策
+    - 危険な文字のエスケープ
+
+    セキュリティベストプラクティスに従ってください。
+  tests:
+    tests/test_solution.py: |
+      from solution import sanitize_html, sanitize_sql, Sanitizer
+
+      def test_html_script_tag():
+          result = sanitize_html("<script>alert('xss')</script>")
+          assert "<script>" not in result
+          assert "alert" not in result or "&" in result
+
+      def test_html_event_handler():
+          result = sanitize_html('<img onerror="alert(1)" src="x">')
+          assert "onerror" not in result or "onerror=" not in result
+
+      def test_html_preserve_safe():
+          result = sanitize_html("Hello <b>World</b>")
+          # 安全なタグは保持しても良い
+          assert "Hello" in result
+          assert "World" in result
+
+      def test_sql_quote_escape():
+          result = sanitize_sql("O'Brien")
+          assert "'" not in result or "''" in result or "\\'" in result
+
+      def test_sql_semicolon():
+          result = sanitize_sql("1; DROP TABLE users;")
+          # セミコロンが無害化されている
+          assert "DROP TABLE" not in result or result != "1; DROP TABLE users;"
+
+      def test_sanitizer_class():
+          s = Sanitizer()
+          # 複数のサニタイズを適用
+          result = s.sanitize("<script>alert(1)</script>", context="html")
+          assert "<script>" not in result
+
+      def test_null_byte():
+          result = sanitize_html("test\x00injection")
+          assert "\x00" not in result
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: 複雑なバグ修正（Complex Debugging）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_debug_race_condition
+  lang: python
+  prompt: |
+    以下のコードには競合状態のバグがあります。修正してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    元コード:
+    ```python
+    class Counter:
+        def __init__(self):
+            self.value = 0
+
+        def increment(self):
+            current = self.value
+            # 何らかの処理（遅延をシミュレート）
+            self.value = current + 1
+
+        def get_value(self):
+            return self.value
+    ```
+
+    要件:
+    - スレッドセーフにする
+    - 複数スレッドから同時にincrementしても正確にカウント
+  tests:
+    tests/test_solution.py: |
+      import threading
+      from solution import Counter
+
+      def test_single_thread():
+          counter = Counter()
+          for _ in range(100):
+              counter.increment()
+          assert counter.get_value() == 100
+
+      def test_multi_thread():
+          counter = Counter()
+          threads = []
+          for _ in range(10):
+              t = threading.Thread(target=lambda: [counter.increment() for _ in range(100)])
+              threads.append(t)
+          for t in threads:
+              t.start()
+          for t in threads:
+              t.join()
+          assert counter.get_value() == 1000
+
+      def test_decrement():
+          counter = Counter()
+          counter.increment()
+          counter.increment()
+          counter.decrement()
+          assert counter.get_value() == 1
+
+      def test_reset():
+          counter = Counter()
+          counter.increment()
+          counter.increment()
+          counter.reset()
+          assert counter.get_value() == 0
+
+
+- id: py_agent_debug_memory_leak
+  lang: python
+  prompt: |
+    以下のコードにはメモリリークの可能性があります。修正してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    元コード:
+    ```python
+    class EventEmitter:
+        _listeners = {}  # クラス変数（問題あり）
+
+        def on(self, event, callback):
+            if event not in self._listeners:
+                self._listeners[event] = []
+            self._listeners[event].append(callback)
+
+        def emit(self, event, *args):
+            if event in self._listeners:
+                for callback in self._listeners[event]:
+                    callback(*args)
+
+        def off(self, event, callback=None):
+            if event in self._listeners:
+                if callback:
+                    self._listeners[event].remove(callback)
+                else:
+                    del self._listeners[event]
+    ```
+
+    問題点:
+    - クラス変数でリスナーを共有している
+    - インスタンスを破棄してもリスナーが残る
+  tests:
+    tests/test_solution.py: |
+      from solution import EventEmitter
+
+      def test_basic_emit():
+          emitter = EventEmitter()
+          results = []
+          emitter.on("test", lambda x: results.append(x))
+          emitter.emit("test", "hello")
+          assert results == ["hello"]
+
+      def test_multiple_listeners():
+          emitter = EventEmitter()
+          results = []
+          emitter.on("test", lambda x: results.append(f"a:{x}"))
+          emitter.on("test", lambda x: results.append(f"b:{x}"))
+          emitter.emit("test", "data")
+          assert len(results) == 2
+
+      def test_off_specific():
+          emitter = EventEmitter()
+          results = []
+          handler = lambda x: results.append(x)
+          emitter.on("test", handler)
+          emitter.off("test", handler)
+          emitter.emit("test", "data")
+          assert results == []
+
+      def test_instance_isolation():
+          # 各インスタンスは独立したリスナーを持つべき
+          emitter1 = EventEmitter()
+          emitter2 = EventEmitter()
+          results1 = []
+          results2 = []
+          emitter1.on("test", lambda x: results1.append(x))
+          emitter2.on("test", lambda x: results2.append(x))
+          emitter1.emit("test", "for1")
+          assert results1 == ["for1"]
+          assert results2 == []  # emitter2には影響なし
+
+      def test_cleanup():
+          emitter = EventEmitter()
+          emitter.on("test", lambda x: x)
+          emitter.off("test")
+          # イベントが登録されていない状態でemitしてもエラーにならない
+          emitter.emit("test", "data")
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: パフォーマンス最適化（Performance Optimization）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_optimize_search
+  lang: python
+  prompt: |
+    以下の非効率なコードを最適化してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    元コード（非効率）:
+    ```python
+    def find_duplicates(items):
+        duplicates = []
+        for i, item in enumerate(items):
+            for j, other in enumerate(items):
+                if i != j and item == other and item not in duplicates:
+                    duplicates.append(item)
+        return duplicates
+
+    def find_common(list1, list2):
+        common = []
+        for item in list1:
+            for other in list2:
+                if item == other and item not in common:
+                    common.append(item)
+        return common
+    ```
+
+    要件:
+    - O(n^2) を O(n) に改善
+    - 同じ結果を返すこと
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import find_duplicates, find_common
+
+      def test_find_duplicates_basic():
+          result = find_duplicates([1, 2, 3, 2, 4, 3])
+          assert set(result) == {2, 3}
+
+      def test_find_duplicates_none():
+          result = find_duplicates([1, 2, 3, 4])
+          assert result == []
+
+      def test_find_duplicates_all():
+          result = find_duplicates([1, 1, 1, 1])
+          assert result == [1]
+
+      def test_find_common_basic():
+          result = find_common([1, 2, 3], [2, 3, 4])
+          assert set(result) == {2, 3}
+
+      def test_find_common_none():
+          result = find_common([1, 2], [3, 4])
+          assert result == []
+
+      def test_performance_duplicates():
+          # 大きなリストでも高速に動作すること
+          large_list = list(range(10000)) + list(range(5000))
+          start = time.time()
+          result = find_duplicates(large_list)
+          elapsed = time.time() - start
+          assert elapsed < 0.5  # 0.5秒以内
+          assert len(result) == 5000
+
+      def test_performance_common():
+          list1 = list(range(10000))
+          list2 = list(range(5000, 15000))
+          start = time.time()
+          result = find_common(list1, list2)
+          elapsed = time.time() - start
+          assert elapsed < 0.5
+          assert len(result) == 5000
+
+
+# -----------------------------------------------------------------------------
+# カテゴリ: 実務的なユーティリティ（Practical Utilities）
+# -----------------------------------------------------------------------------
+
+- id: py_agent_retry_with_backoff
+  lang: python
+  prompt: |
+    実務で使えるリトライ機能を実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 指数バックオフ（exponential backoff）
+    - 最大リトライ回数
+    - リトライ対象の例外を指定可能
+    - ジッター（jitter）でサンダリングヘッド問題を回避
+
+    実務で必要な機能を盛り込んでください。
+  tests:
+    tests/test_solution.py: |
+      import time
+      from solution import retry_with_backoff, RetryConfig
+
+      def test_immediate_success():
+          call_count = [0]
+          @retry_with_backoff(max_retries=3)
+          def success():
+              call_count[0] += 1
+              return "ok"
+          assert success() == "ok"
+          assert call_count[0] == 1
+
+      def test_retry_then_success():
+          call_count = [0]
+          @retry_with_backoff(max_retries=3, base_delay=0.01)
+          def fail_twice():
+              call_count[0] += 1
+              if call_count[0] < 3:
+                  raise ValueError("fail")
+              return "success"
+          assert fail_twice() == "success"
+          assert call_count[0] == 3
+
+      def test_max_retries_exceeded():
+          @retry_with_backoff(max_retries=2, base_delay=0.01)
+          def always_fail():
+              raise RuntimeError("always fails")
+          try:
+              always_fail()
+              assert False
+          except RuntimeError:
+              pass
+
+      def test_retry_specific_exception():
+          call_count = [0]
+          @retry_with_backoff(max_retries=3, retry_on=(ValueError,), base_delay=0.01)
+          def fail_with_type_error():
+              call_count[0] += 1
+              raise TypeError("not retryable")
+          try:
+              fail_with_type_error()
+              assert False
+          except TypeError:
+              pass
+          assert call_count[0] == 1  # no retry
+
+      def test_config_object():
+          config = RetryConfig(max_retries=5, base_delay=0.1, max_delay=1.0)
+          assert config.max_retries == 5
+          assert config.base_delay == 0.1
+
+
+- id: py_agent_data_pipeline
+  lang: python
+  prompt: |
+    データ処理パイプラインを実装してください。
+    解説不要。Pythonコードのみ出力してください。
+
+    要件:
+    - 複数の変換ステップをチェーンできる
+    - 各ステップはエラーハンドリングできる
+    - フィルタリングとマッピングをサポート
+
+    例: Pipeline().filter(条件).map(変換).collect()
+  tests:
+    tests/test_solution.py: |
+      from solution import Pipeline
+
+      def test_basic_map():
+          result = Pipeline([1, 2, 3]).map(lambda x: x * 2).collect()
+          assert result == [2, 4, 6]
+
+      def test_basic_filter():
+          result = Pipeline([1, 2, 3, 4]).filter(lambda x: x % 2 == 0).collect()
+          assert result == [2, 4]
+
+      def test_chain():
+          result = (Pipeline([1, 2, 3, 4, 5])
+                    .filter(lambda x: x > 2)
+                    .map(lambda x: x * 10)
+                    .collect())
+          assert result == [30, 40, 50]
+
+      def test_reduce():
+          result = Pipeline([1, 2, 3, 4]).reduce(lambda acc, x: acc + x, 0)
+          assert result == 10
+
+      def test_first():
+          result = Pipeline([1, 2, 3]).filter(lambda x: x > 1).first()
+          assert result == 2
+
+      def test_first_empty():
+          result = Pipeline([]).first(default=None)
+          assert result is None
+
+      def test_count():
+          count = Pipeline([1, 2, 3, 4]).filter(lambda x: x > 2).count()
+          assert count == 2
+
+      def test_take():
+          result = Pipeline(range(100)).take(5).collect()
+          assert result == [0, 1, 2, 3, 4]
