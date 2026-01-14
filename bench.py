@@ -293,9 +293,17 @@ def main() -> None:
                 max_tokens=args.max_tokens,
             )
             t1 = time.time()
+            llm_seconds = t1 - t0
 
             content = resp.choices[0].message.content or ""
             code = extract_code(content)
+
+            # トークン情報を取得
+            usage = resp.usage
+            prompt_tokens = usage.prompt_tokens if usage else 0
+            completion_tokens = usage.completion_tokens if usage else 0
+            total_tokens = usage.total_tokens if usage else 0
+            tokens_per_second = round(completion_tokens / llm_seconds, 2) if llm_seconds > 0 and completion_tokens > 0 else 0
             write_files({sol_name: code})
 
             # Docker 内でテスト
@@ -314,14 +322,19 @@ def main() -> None:
                     "tests_failed": tests_failed,
                     "tests_total": tests_total,
                     "exit_code": rc,
-                    "llm_seconds": round(t1 - t0, 3),
+                    "llm_seconds": round(llm_seconds, 3),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                    "tokens_per_second": tokens_per_second,
                     "docker_timeout_s": args.docker_timeout,
                     "log_head": log[:2000],  # ログ長暴走を防ぐ
                 }
             )
 
             status = "PASS" if all_passed else f"PARTIAL({tests_passed}/{tests_total})" if tests_passed > 0 else "FAIL"
-            print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {status} score={score} (rc={rc})")
+            tps_str = f"{tokens_per_second:.1f} tok/s" if tokens_per_second > 0 else "N/A"
+            print(f"[{prob.lang}] {prob.id} run {run_idx}/{args.runs} -> {status} score={score} ({tps_str})")
 
     df = pd.DataFrame(rows)
     df.to_csv(args.out, index=False, encoding="utf-8")
@@ -336,6 +349,7 @@ def main() -> None:
             avg_score=("score", "mean"),
             std_score=("score", "std"),
             avg_llm_seconds=("llm_seconds", "mean"),
+            avg_tokens_per_sec=("tokens_per_second", "mean"),
         )
         .reset_index()
         .sort_values(["lang", "problem_id"])
@@ -350,12 +364,21 @@ def main() -> None:
             avg_score=("score", "mean"),
             std_score=("score", "std"),
             avg_llm_seconds=("llm_seconds", "mean"),
+            avg_tokens_per_sec=("tokens_per_second", "mean"),
+            total_tokens=("total_tokens", "sum"),
         )
         .reset_index()
         .sort_values(["lang"])
     )
     print("\n=== Summary (per language) ===")
     print(lang_summary.to_string(index=False))
+
+    # 全体サマリ
+    overall_tps = df["tokens_per_second"].mean()
+    overall_tokens = df["total_tokens"].sum()
+    print(f"\n=== Overall ===")
+    print(f"Average tokens/sec: {overall_tps:.1f}")
+    print(f"Total tokens used:  {overall_tokens}")
 
 
 if __name__ == "__main__":
