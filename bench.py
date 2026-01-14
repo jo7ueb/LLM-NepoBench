@@ -152,7 +152,26 @@ def parse_test_report(lang: str) -> Tuple[int, int, int]:
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # TODO: TypeScript / Go 用のパーサーを追加可能
+    if lang == "typescript" and os.path.exists(report_path):
+        try:
+            with open(report_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # vitest JSON format: { testResults: [{ assertionResults: [...] }] }
+            passed = 0
+            failed = 0
+            for test_file in data.get("testResults", []):
+                for assertion in test_file.get("assertionResults", []):
+                    if assertion.get("status") == "passed":
+                        passed += 1
+                    else:
+                        failed += 1
+            total = passed + failed
+            if total > 0:
+                return passed, failed, total
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # TODO: Go 用のパーサーを追加可能
     return 0, 0, 0
 
 

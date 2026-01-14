@@ -1,71 +1,2027 @@
+# TypeScript ベンチマーク問題集
+# =============================================================================
+
+# カテゴリ: 型安全
 - id: ts_typesafety
   lang: typescript
   prompt: |
     TypeScriptで型安全にリファクタしてください。解説不要、コードのみ。
-    次の条件を満たしてください:
     - any を使わない
     - User 型を定義する
-    - processUser は User を受け取り、name を大文字化して返す文字列と、age+10の数値を返す
-    - exports: `export type User = ...` と `export function processUser(...) ...`
-
-    元コード:
-    function processUser(user: any) {
-        console.log(user.name.toUpperCase());
-        return user.age + 10;
-    }
+    - processUser は User を受け取り、{upperName, agePlus10}を返す
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import { processUser, type User } from "../solution";
-
       describe("processUser", () => {
-        it("works", () => {
+        it("returns upperName", () => {
           const u: User = { name: "alice", age: 20 };
-          const r = processUser(u);
-          expect(r.upperName).toBe("ALICE");
-          expect(r.agePlus10).toBe(30);
+          expect(processUser(u).upperName).toBe("ALICE");
         });
-      })
+        it("returns agePlus10", () => {
+          const u: User = { name: "bob", age: 25 };
+          expect(processUser(u).agePlus10).toBe(35);
+        });
+        it("handles mixed case", () => {
+          const u: User = { name: "ChArLiE", age: 30 };
+          expect(processUser(u).upperName).toBe("CHARLIE");
+        });
+        it("handles zero age", () => {
+          const u: User = { name: "dave", age: 0 };
+          expect(processUser(u).agePlus10).toBe(10);
+        });
+      });
 
+- id: ts_type_guard
+  lang: typescript
+  prompt: |
+    型ガード関数を実装。解説不要、コードのみ。
+    - isString(value: unknown): value is string
+    - isNumber(value: unknown): value is number
+    - isUser(value: unknown): value is User (User = {name: string, email: string})
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { isString, isNumber, isUser } from "../solution";
+      describe("isString", () => {
+        it("true for string", () => expect(isString("hello")).toBe(true));
+        it("false for number", () => expect(isString(123)).toBe(false));
+        it("false for null", () => expect(isString(null)).toBe(false));
+      });
+      describe("isNumber", () => {
+        it("true for number", () => expect(isNumber(42)).toBe(true));
+        it("false for string", () => expect(isNumber("42")).toBe(false));
+      });
+      describe("isUser", () => {
+        it("true for valid", () => expect(isUser({name:"A",email:"a@b.c"})).toBe(true));
+        it("false for missing", () => expect(isUser({name:"B"})).toBe(false));
+        it("false for null", () => expect(isUser(null)).toBe(false));
+      });
+
+- id: ts_generic_function
+  lang: typescript
+  prompt: |
+    ジェネリック関数を実装。解説不要、コードのみ。
+    - first<T>(arr: T[]): T | undefined
+    - last<T>(arr: T[]): T | undefined
+    - unique<T>(arr: T[]): T[]
+    - groupBy<T, K extends string|number>(arr: T[], keyFn: (item: T) => K): Record<K, T[]>
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { first, last, unique, groupBy } from "../solution";
+      describe("first", () => {
+        it("returns first", () => expect(first([1,2,3])).toBe(1));
+        it("undefined for empty", () => expect(first([])).toBeUndefined());
+      });
+      describe("last", () => {
+        it("returns last", () => expect(last([1,2,3])).toBe(3));
+        it("undefined for empty", () => expect(last([])).toBeUndefined());
+      });
+      describe("unique", () => {
+        it("removes duplicates", () => expect(unique([1,2,2,3])).toEqual([1,2,3]));
+      });
+      describe("groupBy", () => {
+        it("groups by key", () => {
+          const r = groupBy([{t:"a"},{t:"b"},{t:"a"}], i=>i.t);
+          expect(r["a"].length).toBe(2);
+        });
+      });
+
+# カテゴリ: 非同期処理
 - id: ts_async_wait
   lang: typescript
   prompt: |
-    TypeScriptで次の関数を修正してください（解説不要、コードのみ）。
-    バグ: forEach内のawaitが効かず、処理完了前にDone相当が発生します。
-    要求:
-    - saveAll は items と save 関数を受け取り、全件保存が完了してから resolve する Promise を返す
-    - exports: `export async function saveAll(...)`
-    - forEach は使わない
-
-    参考(バグコード):
-    async function saveAll(items: string[]) {
-        items.forEach(async (item) => {
-            await db.save(item);
-        });
-        console.log("Done");
-    }
+    forEach内のawaitバグを修正。解説不要、コードのみ。
+    saveAll(items: string[], save: (item: string) => Promise<void>): Promise<void>
+    全件保存完了後にresolve
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import { saveAll } from "../solution";
-
-      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
       describe("saveAll", () => {
         it("waits for all saves", async () => {
           const calls: string[] = [];
-          const save = async (item: string) => {
-            await sleep(20);
-            calls.push(item);
-          };
-
-          const t0 = Date.now();
-          await saveAll(["a", "b", "c"], save);
-          const dt = Date.now() - t0;
-
-          expect(calls.sort()).toEqual(["a", "b", "c"]);
-          // 並列なら ~20ms以上、直列なら ~60ms以上。いずれにせよ待っていることが重要
-          expect(dt).toBeGreaterThanOrEqual(15);
+          const save = async (item: string) => { await sleep(20); calls.push(item); };
+          await saveAll(["a","b","c"], save);
+          expect(calls.sort()).toEqual(["a","b","c"]);
         });
-      })
+        it("handles empty", async () => {
+          await saveAll([], async () => {});
+        });
+      });
 
+- id: ts_promise_retry
+  lang: typescript
+  prompt: |
+    リトライ機能を実装。解説不要、コードのみ。
+    retry<T>(fn: () => Promise<T>, maxAttempts: number): Promise<T>
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { retry } from "../solution";
+      describe("retry", () => {
+        it("returns on success", async () => {
+          expect(await retry(() => Promise.resolve("ok"), 3)).toBe("ok");
+        });
+        it("retries on failure", async () => {
+          let a = 0;
+          const fn = () => { a++; if(a<3) return Promise.reject(new Error()); return Promise.resolve("s"); };
+          expect(await retry(fn, 3)).toBe("s");
+        });
+        it("throws after max", async () => {
+          await expect(retry(() => Promise.reject(new Error("fail")), 2)).rejects.toThrow();
+        });
+      });
+
+# カテゴリ: データ処理
+- id: ts_array_utils
+  lang: typescript
+  prompt: |
+    配列ユーティリティを実装。解説不要、コードのみ。
+    - chunk<T>(arr: T[], size: number): T[][]
+    - flatten<T>(arr: (T|T[])[]): T[]
+    - zip<T,U>(arr1: T[], arr2: U[]): [T,U][]
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { chunk, flatten, zip } from "../solution";
+      describe("chunk", () => {
+        it("splits array", () => expect(chunk([1,2,3,4,5],2)).toEqual([[1,2],[3,4],[5]]));
+        it("handles empty", () => expect(chunk([],3)).toEqual([]));
+      });
+      describe("flatten", () => {
+        it("flattens one level", () => expect(flatten([1,[2,3],4])).toEqual([1,2,3,4]));
+      });
+      describe("zip", () => {
+        it("zips arrays", () => expect(zip([1,2],["a","b"])).toEqual([[1,"a"],[2,"b"]]));
+      });
+
+- id: ts_object_utils
+  lang: typescript
+  prompt: |
+    オブジェクトユーティリティを実装。解説不要、コードのみ。
+    - pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
+    - omit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>
+    - merge<T>(target: T, source: Partial<T>): T
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { pick, omit, merge } from "../solution";
+      describe("pick", () => {
+        it("picks keys", () => expect(pick({a:1,b:2,c:3},["a","c"])).toEqual({a:1,c:3}));
+      });
+      describe("omit", () => {
+        it("omits keys", () => expect(omit({a:1,b:2,c:3},["b"])).toEqual({a:1,c:3}));
+      });
+      describe("merge", () => {
+        it("merges", () => expect(merge({a:1,b:2},{b:3})).toEqual({a:1,b:3}));
+      });
+
+# カテゴリ: OOP
+- id: ts_event_emitter
+  lang: typescript
+  prompt: |
+    イベントエミッターを実装。解説不要、コードのみ。
+    class EventEmitter<Events extends Record<string, any>>
+    on, off, emit メソッド
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { EventEmitter } from "../solution";
+      type Events = { message: string; count: number };
+      describe("EventEmitter", () => {
+        it("emits", () => {
+          const e = new EventEmitter<Events>();
+          const msgs: string[] = [];
+          e.on("message", m => msgs.push(m));
+          e.emit("message", "hi");
+          expect(msgs).toEqual(["hi"]);
+        });
+        it("removes listener", () => {
+          const e = new EventEmitter<Events>();
+          const msgs: string[] = [];
+          const fn = (m: string) => msgs.push(m);
+          e.on("message", fn);
+          e.off("message", fn);
+          e.emit("message", "test");
+          expect(msgs).toEqual([]);
+        });
+      });
+
+- id: ts_result_type
+  lang: typescript
+  prompt: |
+    Result型を実装。解説不要、コードのみ。
+    type Result<T, E> = Ok<T> | Err<E>
+    ok, err関数、isOk, isErr, unwrapメソッド
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { ok, err } from "../solution";
+      describe("Result", () => {
+        it("ok isOk", () => expect(ok(42).isOk()).toBe(true));
+        it("err isErr", () => expect(err("e").isErr()).toBe(true));
+        it("ok unwrap", () => expect(ok("s").unwrap()).toBe("s"));
+        it("err unwrap throws", () => expect(() => err("f").unwrap()).toThrow());
+      });
+
+# Level 1: Easy
+- id: ts_agent_L1_storage
+  lang: typescript
+  prompt: |
+    Key-Valueストレージを実装。解説不要、コードのみ。
+    要件: get/set/delete/has, TTLサポート
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Storage } from "../solution";
+      describe("Storage", () => {
+        it("sets and gets", () => {
+          const s = new Storage();
+          s.set("k", "v");
+          expect(s.get("k")).toBe("v");
+        });
+        it("returns undefined for missing", () => {
+          expect(new Storage().get("x")).toBeUndefined();
+        });
+        it("deletes", () => {
+          const s = new Storage();
+          s.set("k", "v");
+          s.delete("k");
+          expect(s.get("k")).toBeUndefined();
+        });
+        it("supports TTL", async () => {
+          const s = new Storage();
+          s.set("t", "v", { ttl: 50 });
+          await new Promise(r => setTimeout(r, 60));
+          expect(s.get("t")).toBeUndefined();
+        });
+        it("has method", () => {
+          const s = new Storage();
+          s.set("k", "v");
+          expect(s.has("k")).toBe(true);
+        });
+      });
+
+- id: ts_agent_L1_validator
+  lang: typescript
+  prompt: |
+    バリデーターを実装。解説不要、コードのみ。
+    要件: string/number検証, email, minLength, min/max, required
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Validator } from "../solution";
+      describe("Validator", () => {
+        it("validates required", () => {
+          expect(new Validator().string("hi").required().isValid()).toBe(true);
+          expect(new Validator().string("").required().isValid()).toBe(false);
+        });
+        it("validates minLength", () => {
+          expect(new Validator().string("hello").minLength(3).isValid()).toBe(true);
+          expect(new Validator().string("hi").minLength(3).isValid()).toBe(false);
+        });
+        it("validates email", () => {
+          expect(new Validator().string("a@b.c").email().isValid()).toBe(true);
+          expect(new Validator().string("bad").email().isValid()).toBe(false);
+        });
+        it("validates number range", () => {
+          expect(new Validator().number(5).min(0).max(10).isValid()).toBe(true);
+        });
+      });
+
+- id: ts_agent_L1_queue
+  lang: typescript
+  prompt: |
+    キュー(FIFO)を実装。解説不要、コードのみ。
+    要件: enqueue, dequeue, peek, size, isEmpty
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Queue } from "../solution";
+      describe("Queue", () => {
+        it("FIFO order", () => {
+          const q = new Queue<number>();
+          q.enqueue(1); q.enqueue(2);
+          expect(q.dequeue()).toBe(1);
+          expect(q.dequeue()).toBe(2);
+        });
+        it("peek", () => {
+          const q = new Queue<string>();
+          q.enqueue("a");
+          expect(q.peek()).toBe("a");
+          expect(q.size()).toBe(1);
+        });
+        it("isEmpty", () => {
+          const q = new Queue();
+          expect(q.isEmpty()).toBe(true);
+          q.enqueue(1);
+          expect(q.isEmpty()).toBe(false);
+        });
+      });
+
+# Level 2: Medium
+- id: ts_agent_L2_state_manager
+  lang: typescript
+  prompt: |
+    状態管理を実装。解説不要、コードのみ。
+    要件: getState, setState, subscribe(unsubscribe返却), select
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Store } from "../solution";
+      describe("Store", () => {
+        it("gets initial state", () => {
+          expect(new Store({ count: 0 }).getState().count).toBe(0);
+        });
+        it("updates state", () => {
+          const s = new Store({ count: 0 });
+          s.setState({ count: 5 });
+          expect(s.getState().count).toBe(5);
+        });
+        it("notifies subscribers", () => {
+          const s = new Store({ count: 0 });
+          const vals: number[] = [];
+          s.subscribe(st => vals.push(st.count));
+          s.setState({ count: 1 });
+          expect(vals).toContain(1);
+        });
+        it("unsubscribes", () => {
+          const s = new Store({ count: 0 });
+          const vals: number[] = [];
+          const unsub = s.subscribe(st => vals.push(st.count));
+          s.setState({ count: 1 });
+          unsub();
+          s.setState({ count: 2 });
+          expect(vals).toEqual([1]);
+        });
+      });
+
+- id: ts_agent_L2_router
+  lang: typescript
+  prompt: |
+    URLルーターを実装。解説不要、コードのみ。
+    要件: パスパラメータ(:id), クエリパラメータ, ハンドラ登録
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Router } from "../solution";
+      describe("Router", () => {
+        it("matches exact", () => {
+          const r = new Router();
+          let called = false;
+          r.add("/users", () => { called = true; });
+          r.navigate("/users");
+          expect(called).toBe(true);
+        });
+        it("extracts params", () => {
+          const r = new Router();
+          let id = "";
+          r.add("/users/:id", p => { id = p.id; });
+          r.navigate("/users/123");
+          expect(id).toBe("123");
+        });
+        it("parses query", () => {
+          const r = new Router();
+          let q: Record<string,string> = {};
+          r.add("/search", (p, query) => { q = query; });
+          r.navigate("/search?q=test");
+          expect(q.q).toBe("test");
+        });
+      });
+
+- id: ts_agent_L2_cache
+  lang: typescript
+  prompt: |
+    LRUキャッシュを実装。解説不要、コードのみ。
+    要件: maxSize, get/set, TTL, has, size
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { LRUCache } from "../solution";
+      describe("LRUCache", () => {
+        it("stores and retrieves", () => {
+          const c = new LRUCache<string,number>({ maxSize: 3 });
+          c.set("a", 1);
+          expect(c.get("a")).toBe(1);
+        });
+        it("evicts LRU", () => {
+          const c = new LRUCache<string,number>({ maxSize: 2 });
+          c.set("a", 1); c.set("b", 2);
+          c.get("a");
+          c.set("c", 3);
+          expect(c.get("b")).toBeUndefined();
+        });
+        it("respects maxSize", () => {
+          const c = new LRUCache<string,number>({ maxSize: 2 });
+          c.set("a", 1); c.set("b", 2); c.set("c", 3);
+          expect(c.size()).toBe(2);
+        });
+        it("supports TTL", async () => {
+          const c = new LRUCache<string,number>({ maxSize: 10 });
+          c.set("t", 42, { ttl: 50 });
+          await new Promise(r => setTimeout(r, 60));
+          expect(c.get("t")).toBeUndefined();
+        });
+      });
+
+- id: ts_agent_L2_task_queue
+  lang: typescript
+  prompt: |
+    非同期タスクキューを実装。解説不要、コードのみ。
+    要件: concurrency制限, add, drain, pending
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { TaskQueue } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("TaskQueue", () => {
+        it("executes tasks", async () => {
+          const q = new TaskQueue({ concurrency: 2 });
+          const r: number[] = [];
+          q.add(async () => { r.push(1); });
+          q.add(async () => { r.push(2); });
+          await q.drain();
+          expect(r.length).toBe(2);
+        });
+        it("respects concurrency", async () => {
+          const q = new TaskQueue({ concurrency: 1 });
+          const order: number[] = [];
+          q.add(async () => { await sleep(30); order.push(1); });
+          q.add(async () => { order.push(2); });
+          await q.drain();
+          expect(order).toEqual([1, 2]);
+        });
+      });
+
+# Level 3: Hard
+- id: ts_agent_L3_di_container
+  lang: typescript
+  prompt: |
+    DIコンテナを実装。解説不要、コードのみ。
+    要件: register, resolve, singleton/transient, 依存解決
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Container } from "../solution";
+      describe("Container", () => {
+        it("resolves simple", () => {
+          const c = new Container();
+          class Svc { name = "Svc"; }
+          c.register(Svc);
+          expect(c.resolve(Svc).name).toBe("Svc");
+        });
+        it("resolves with deps", () => {
+          const c = new Container();
+          class DB { ok = true; }
+          class Svc { constructor(public db: DB) {} }
+          c.register(DB);
+          c.register(Svc, [DB]);
+          expect(c.resolve(Svc).db.ok).toBe(true);
+        });
+        it("singleton", () => {
+          const c = new Container();
+          class S {}
+          c.register(S, [], { singleton: true });
+          expect(c.resolve(S)).toBe(c.resolve(S));
+        });
+      });
+
+- id: ts_agent_L3_state_machine
+  lang: typescript
+  prompt: |
+    有限状態マシンを実装。解説不要、コードのみ。
+    要件: initial state, transitions, send, state, onEnter
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { StateMachine } from "../solution";
+      describe("StateMachine", () => {
+        it("starts in initial", () => {
+          const sm = new StateMachine({
+            initial: "idle",
+            states: { idle: { on: { START: "running" } }, running: {} }
+          });
+          expect(sm.state).toBe("idle");
+        });
+        it("transitions", () => {
+          const sm = new StateMachine({
+            initial: "idle",
+            states: { idle: { on: { START: "running" } }, running: {} }
+          });
+          sm.send("START");
+          expect(sm.state).toBe("running");
+        });
+        it("calls onEnter", () => {
+          let entered = false;
+          const sm = new StateMachine({
+            initial: "idle",
+            states: { idle: { on: { GO: "done" } }, done: { onEnter: () => { entered = true; } } }
+          });
+          sm.send("GO");
+          expect(entered).toBe(true);
+        });
+      });
+
+- id: ts_agent_L3_circuit_breaker
+  lang: typescript
+  prompt: |
+    サーキットブレーカーを実装。解説不要、コードのみ。
+    要件: CLOSED/OPEN/HALF_OPEN状態, failureThreshold, recoveryTimeout
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { CircuitBreaker, CircuitState } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("CircuitBreaker", () => {
+        it("starts CLOSED", () => {
+          const cb = new CircuitBreaker({ failureThreshold: 3, recoveryTimeout: 100 });
+          expect(cb.state).toBe(CircuitState.CLOSED);
+        });
+        it("opens after threshold", async () => {
+          const cb = new CircuitBreaker({ failureThreshold: 2, recoveryTimeout: 100 });
+          for (let i = 0; i < 2; i++) try { await cb.call(() => Promise.reject(new Error())); } catch {}
+          expect(cb.state).toBe(CircuitState.OPEN);
+        });
+        it("half-open after timeout", async () => {
+          const cb = new CircuitBreaker({ failureThreshold: 1, recoveryTimeout: 50 });
+          try { await cb.call(() => Promise.reject(new Error())); } catch {}
+          await sleep(60);
+          expect(cb.state).toBe(CircuitState.HALF_OPEN);
+        });
+      });
+
+# Level 4: Expert
+- id: ts_agent_L4_workflow
+  lang: typescript
+  prompt: |
+    ワークフローエンジンを実装。解説不要、コードのみ。
+    要件: タスク依存関係, 並列/直列実行, 状態追跡(COMPLETED/FAILED/SKIPPED)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Workflow, TaskStatus } from "../solution";
+      describe("Workflow", () => {
+        it("sequential", async () => {
+          const r: string[] = [];
+          const wf = new Workflow();
+          wf.addTask("a", async () => { r.push("a"); });
+          wf.addTask("b", async () => { r.push("b"); }, { dependsOn: ["a"] });
+          await wf.run();
+          expect(r).toEqual(["a", "b"]);
+        });
+        it("failure skips dependents", async () => {
+          const wf = new Workflow();
+          wf.addTask("a", async () => { throw new Error(); });
+          wf.addTask("b", async () => {}, { dependsOn: ["a"] });
+          await wf.run();
+          expect(wf.getStatus("a")).toBe(TaskStatus.FAILED);
+          expect(wf.getStatus("b")).toBe(TaskStatus.SKIPPED);
+        });
+      });
+
+- id: ts_agent_L4_saga
+  lang: typescript
+  prompt: |
+    Sagaパターンを実装。解説不要、コードのみ。
+    要件: execute/compensate, 失敗時自動補償(逆順), SagaStatus
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Saga, SagaStatus } from "../solution";
+      describe("Saga", () => {
+        it("executes all on success", async () => {
+          const r: string[] = [];
+          const saga = new Saga();
+          saga.addStep({ execute: async () => { r.push("s1"); }, compensate: async () => {} });
+          saga.addStep({ execute: async () => { r.push("s2"); }, compensate: async () => {} });
+          await saga.run();
+          expect(r).toEqual(["s1", "s2"]);
+        });
+        it("compensates on failure", async () => {
+          const r: string[] = [];
+          const saga = new Saga();
+          saga.addStep({ execute: async () => { r.push("s1"); }, compensate: async () => { r.push("c1"); } });
+          saga.addStep({ execute: async () => { throw new Error(); }, compensate: async () => {} });
+          await saga.run();
+          expect(r).toContain("c1");
+        });
+      });
+
+- id: ts_agent_L4_api_gateway
+  lang: typescript
+  prompt: |
+    APIゲートウェイを実装。解説不要、コードのみ。
+    要件: ルーティング, パスパラメータ, ミドルウェア, レート制限
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Gateway } from "../solution";
+      describe("Gateway", () => {
+        it("routes to handler", async () => {
+          const gw = new Gateway();
+          gw.route("GET", "/users", async () => ({ status: 200, body: [] }));
+          const res = await gw.handle({ method: "GET", path: "/users" });
+          expect(res.status).toBe(200);
+        });
+        it("extracts params", async () => {
+          const gw = new Gateway();
+          gw.route("GET", "/users/:id", async req => ({ status: 200, body: { id: req.params.id } }));
+          const res = await gw.handle({ method: "GET", path: "/users/123" });
+          expect(res.body.id).toBe("123");
+        });
+        it("404 for unknown", async () => {
+          const gw = new Gateway();
+          const res = await gw.handle({ method: "GET", path: "/unknown" });
+          expect(res.status).toBe(404);
+        });
+      });
+
+# =============================================================================
+# 追加問題: 基本問題拡充
+# =============================================================================
+
+- id: ts_string_utils
+  lang: typescript
+  prompt: |
+    文字列ユーティリティを実装。解説不要、コードのみ。
+    - capitalize(str: string): string - 最初の文字を大文字に
+    - camelToSnake(str: string): string - camelCase → snake_case
+    - snakeToCamel(str: string): string - snake_case → camelCase
+    - truncate(str: string, maxLength: number, suffix?: string): string
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { capitalize, camelToSnake, snakeToCamel, truncate } from "../solution";
+      describe("capitalize", () => {
+        it("capitalizes", () => expect(capitalize("hello")).toBe("Hello"));
+        it("handles empty", () => expect(capitalize("")).toBe(""));
+      });
+      describe("camelToSnake", () => {
+        it("converts", () => expect(camelToSnake("camelCase")).toBe("camel_case"));
+        it("multiple words", () => expect(camelToSnake("thisIsATest")).toBe("this_is_a_test"));
+      });
+      describe("snakeToCamel", () => {
+        it("converts", () => expect(snakeToCamel("snake_case")).toBe("snakeCase"));
+      });
+      describe("truncate", () => {
+        it("truncates long string", () => expect(truncate("hello world", 8, "...")).toBe("hello..."));
+        it("keeps short string", () => expect(truncate("hi", 10)).toBe("hi"));
+      });
+
+- id: ts_date_utils
+  lang: typescript
+  prompt: |
+    日付ユーティリティを実装。解説不要、コードのみ。
+    - formatDate(date: Date, format: string): string (yyyy, MM, dd, HH, mm, ss)
+    - addDays(date: Date, days: number): Date
+    - diffDays(date1: Date, date2: Date): number
+    - isWeekend(date: Date): boolean
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { formatDate, addDays, diffDays, isWeekend } from "../solution";
+      describe("formatDate", () => {
+        it("formats yyyy-MM-dd", () => {
+          const d = new Date("2024-01-15");
+          expect(formatDate(d, "yyyy-MM-dd")).toBe("2024-01-15");
+        });
+      });
+      describe("addDays", () => {
+        it("adds days", () => {
+          const d = new Date("2024-01-15");
+          const result = addDays(d, 5);
+          expect(result.getDate()).toBe(20);
+        });
+      });
+      describe("diffDays", () => {
+        it("calculates difference", () => {
+          const d1 = new Date("2024-01-15");
+          const d2 = new Date("2024-01-20");
+          expect(diffDays(d1, d2)).toBe(5);
+        });
+      });
+      describe("isWeekend", () => {
+        it("returns true for saturday", () => {
+          expect(isWeekend(new Date("2024-01-13"))).toBe(true); // Saturday
+        });
+        it("returns false for monday", () => {
+          expect(isWeekend(new Date("2024-01-15"))).toBe(false); // Monday
+        });
+      });
+
+- id: ts_deep_clone
+  lang: typescript
+  prompt: |
+    深いコピーを実装。解説不要、コードのみ。
+    - deepClone<T>(obj: T): T - オブジェクトの深いコピー
+    - Date, Array, ネストしたオブジェクトに対応
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { deepClone } from "../solution";
+      describe("deepClone", () => {
+        it("clones object", () => {
+          const obj = { a: 1, b: { c: 2 } };
+          const clone = deepClone(obj);
+          clone.b.c = 99;
+          expect(obj.b.c).toBe(2);
+        });
+        it("clones array", () => {
+          const arr = [1, [2, 3]];
+          const clone = deepClone(arr);
+          (clone[1] as number[])[0] = 99;
+          expect((arr[1] as number[])[0]).toBe(2);
+        });
+        it("clones date", () => {
+          const d = new Date("2024-01-15");
+          const clone = deepClone({ date: d });
+          expect(clone.date.getTime()).toBe(d.getTime());
+        });
+      });
+
+- id: ts_debounce_throttle
+  lang: typescript
+  prompt: |
+    debounceとthrottleを実装。解説不要、コードのみ。
+    - debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T
+    - throttle<T extends (...args: any[]) => void>(fn: T, limit: number): T
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { debounce, throttle } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("debounce", () => {
+        it("delays execution", async () => {
+          let count = 0;
+          const fn = debounce(() => count++, 50);
+          fn(); fn(); fn();
+          expect(count).toBe(0);
+          await sleep(60);
+          expect(count).toBe(1);
+        });
+      });
+      describe("throttle", () => {
+        it("limits execution", async () => {
+          let count = 0;
+          const fn = throttle(() => count++, 50);
+          fn(); fn(); fn();
+          expect(count).toBe(1);
+          await sleep(60);
+          fn();
+          expect(count).toBe(2);
+        });
+      });
+
+- id: ts_observable
+  lang: typescript
+  prompt: |
+    シンプルなObservableを実装。解説不要、コードのみ。
+    - class Observable<T>
+    - subscribe(observer: (value: T) => void): () => void
+    - pipe(...operators): Observable<U>
+    - map, filter 演算子
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Observable, map, filter } from "../solution";
+      describe("Observable", () => {
+        it("emits values", () => {
+          const values: number[] = [];
+          const obs = new Observable<number>((emit) => {
+            emit(1); emit(2); emit(3);
+          });
+          obs.subscribe(v => values.push(v));
+          expect(values).toEqual([1, 2, 3]);
+        });
+        it("maps values", () => {
+          const values: number[] = [];
+          const obs = new Observable<number>((emit) => { emit(1); emit(2); });
+          obs.pipe(map((x: number) => x * 2)).subscribe(v => values.push(v));
+          expect(values).toEqual([2, 4]);
+        });
+        it("filters values", () => {
+          const values: number[] = [];
+          const obs = new Observable<number>((emit) => { emit(1); emit(2); emit(3); });
+          obs.pipe(filter((x: number) => x % 2 === 1)).subscribe(v => values.push(v));
+          expect(values).toEqual([1, 3]);
+        });
+      });
+
+- id: ts_linked_list
+  lang: typescript
+  prompt: |
+    連結リストを実装。解説不要、コードのみ。
+    - class LinkedList<T>
+    - append, prepend, find, remove, toArray
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { LinkedList } from "../solution";
+      describe("LinkedList", () => {
+        it("appends", () => {
+          const list = new LinkedList<number>();
+          list.append(1); list.append(2);
+          expect(list.toArray()).toEqual([1, 2]);
+        });
+        it("prepends", () => {
+          const list = new LinkedList<number>();
+          list.append(2); list.prepend(1);
+          expect(list.toArray()).toEqual([1, 2]);
+        });
+        it("finds", () => {
+          const list = new LinkedList<number>();
+          list.append(1); list.append(2); list.append(3);
+          expect(list.find(v => v === 2)).toBe(2);
+        });
+        it("removes", () => {
+          const list = new LinkedList<number>();
+          list.append(1); list.append(2); list.append(3);
+          list.remove(2);
+          expect(list.toArray()).toEqual([1, 3]);
+        });
+      });
+
+- id: ts_binary_search
+  lang: typescript
+  prompt: |
+    二分探索を実装。解説不要、コードのみ。
+    - binarySearch<T>(arr: T[], target: T, compare?: (a: T, b: T) => number): number
+    - 見つからない場合は -1 を返す
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { binarySearch } from "../solution";
+      describe("binarySearch", () => {
+        it("finds element", () => {
+          expect(binarySearch([1, 2, 3, 4, 5], 3)).toBe(2);
+        });
+        it("returns -1 if not found", () => {
+          expect(binarySearch([1, 2, 3], 5)).toBe(-1);
+        });
+        it("handles empty array", () => {
+          expect(binarySearch([], 1)).toBe(-1);
+        });
+        it("uses custom compare", () => {
+          const arr = [{v: 1}, {v: 2}, {v: 3}];
+          const idx = binarySearch(arr, {v: 2}, (a, b) => a.v - b.v);
+          expect(idx).toBe(1);
+        });
+      });
+
+- id: ts_tree_traversal
+  lang: typescript
+  prompt: |
+    二分木の走査を実装。解説不要、コードのみ。
+    - type TreeNode<T> = { value: T; left?: TreeNode<T>; right?: TreeNode<T> }
+    - inOrder<T>(root: TreeNode<T>): T[]
+    - preOrder<T>(root: TreeNode<T>): T[]
+    - postOrder<T>(root: TreeNode<T>): T[]
+    - bfs<T>(root: TreeNode<T>): T[]
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { inOrder, preOrder, postOrder, bfs, type TreeNode } from "../solution";
+      const tree: TreeNode<number> = {
+        value: 1,
+        left: { value: 2, left: { value: 4 }, right: { value: 5 } },
+        right: { value: 3 }
+      };
+      describe("inOrder", () => {
+        it("traverses", () => expect(inOrder(tree)).toEqual([4, 2, 5, 1, 3]));
+      });
+      describe("preOrder", () => {
+        it("traverses", () => expect(preOrder(tree)).toEqual([1, 2, 4, 5, 3]));
+      });
+      describe("postOrder", () => {
+        it("traverses", () => expect(postOrder(tree)).toEqual([4, 5, 2, 3, 1]));
+      });
+      describe("bfs", () => {
+        it("traverses", () => expect(bfs(tree)).toEqual([1, 2, 3, 4, 5]));
+      });
+
+# =============================================================================
+# Level 1 追加問題
+# =============================================================================
+
+- id: ts_agent_L1_stack
+  lang: typescript
+  prompt: |
+    スタック(LIFO)を実装。解説不要、コードのみ。
+    要件: push, pop, peek, size, isEmpty
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Stack } from "../solution";
+      describe("Stack", () => {
+        it("LIFO order", () => {
+          const s = new Stack<number>();
+          s.push(1); s.push(2); s.push(3);
+          expect(s.pop()).toBe(3);
+          expect(s.pop()).toBe(2);
+        });
+        it("peek", () => {
+          const s = new Stack<string>();
+          s.push("a"); s.push("b");
+          expect(s.peek()).toBe("b");
+          expect(s.size()).toBe(2);
+        });
+        it("isEmpty", () => {
+          const s = new Stack();
+          expect(s.isEmpty()).toBe(true);
+          s.push(1);
+          expect(s.isEmpty()).toBe(false);
+        });
+      });
+
+- id: ts_agent_L1_counter
+  lang: typescript
+  prompt: |
+    カウンターを実装。解説不要、コードのみ。
+    要件:
+    - increment(key: string): number
+    - decrement(key: string): number
+    - get(key: string): number
+    - reset(key?: string): void
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Counter } from "../solution";
+      describe("Counter", () => {
+        it("increments", () => {
+          const c = new Counter();
+          expect(c.increment("a")).toBe(1);
+          expect(c.increment("a")).toBe(2);
+        });
+        it("decrements", () => {
+          const c = new Counter();
+          c.increment("a");
+          c.increment("a");
+          expect(c.decrement("a")).toBe(1);
+        });
+        it("gets", () => {
+          const c = new Counter();
+          expect(c.get("x")).toBe(0);
+          c.increment("x");
+          expect(c.get("x")).toBe(1);
+        });
+        it("resets", () => {
+          const c = new Counter();
+          c.increment("a");
+          c.increment("b");
+          c.reset("a");
+          expect(c.get("a")).toBe(0);
+          expect(c.get("b")).toBe(1);
+        });
+      });
+
+- id: ts_agent_L1_timer
+  lang: typescript
+  prompt: |
+    タイマーを実装。解説不要、コードのみ。
+    要件:
+    - start(): void
+    - stop(): void
+    - reset(): void
+    - elapsed(): number (ミリ秒)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Timer } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("Timer", () => {
+        it("measures elapsed time", async () => {
+          const t = new Timer();
+          t.start();
+          await sleep(50);
+          t.stop();
+          expect(t.elapsed()).toBeGreaterThanOrEqual(40);
+        });
+        it("resets", async () => {
+          const t = new Timer();
+          t.start();
+          await sleep(30);
+          t.reset();
+          expect(t.elapsed()).toBe(0);
+        });
+      });
+
+# =============================================================================
+# Level 2 追加問題
+# =============================================================================
+
+- id: ts_agent_L2_pub_sub
+  lang: typescript
+  prompt: |
+    Pub/Subシステムを実装。解説不要、コードのみ。
+    要件:
+    - publish(topic: string, message: T): void
+    - subscribe(topic: string, handler: (message: T) => void): () => void
+    - unsubscribe(topic: string, handler): void
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { PubSub } from "../solution";
+      describe("PubSub", () => {
+        it("publishes and subscribes", () => {
+          const ps = new PubSub<string>();
+          const msgs: string[] = [];
+          ps.subscribe("topic1", m => msgs.push(m));
+          ps.publish("topic1", "hello");
+          expect(msgs).toEqual(["hello"]);
+        });
+        it("multiple subscribers", () => {
+          const ps = new PubSub<number>();
+          const results: number[] = [];
+          ps.subscribe("num", n => results.push(n));
+          ps.subscribe("num", n => results.push(n * 2));
+          ps.publish("num", 5);
+          expect(results).toContain(5);
+          expect(results).toContain(10);
+        });
+        it("unsubscribes", () => {
+          const ps = new PubSub<string>();
+          const msgs: string[] = [];
+          const unsub = ps.subscribe("t", m => msgs.push(m));
+          ps.publish("t", "a");
+          unsub();
+          ps.publish("t", "b");
+          expect(msgs).toEqual(["a"]);
+        });
+      });
+
+- id: ts_agent_L2_promise_pool
+  lang: typescript
+  prompt: |
+    Promiseプールを実装。解説不要、コードのみ。
+    要件:
+    - 同時実行数を制限してPromiseを実行
+    - all(): 全て完了まで待機
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { PromisePool } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("PromisePool", () => {
+        it("limits concurrency", async () => {
+          let concurrent = 0;
+          let maxConcurrent = 0;
+          const pool = new PromisePool(2);
+          const tasks = [1, 2, 3, 4].map(() => async () => {
+            concurrent++;
+            maxConcurrent = Math.max(maxConcurrent, concurrent);
+            await sleep(20);
+            concurrent--;
+          });
+          tasks.forEach(t => pool.add(t));
+          await pool.all();
+          expect(maxConcurrent).toBeLessThanOrEqual(2);
+        });
+        it("returns results", async () => {
+          const pool = new PromisePool(2);
+          pool.add(async () => 1);
+          pool.add(async () => 2);
+          const results = await pool.all();
+          expect(results.sort()).toEqual([1, 2]);
+        });
+      });
+
+- id: ts_agent_L2_middleware
+  lang: typescript
+  prompt: |
+    ミドルウェアパターンを実装。解説不要、コードのみ。
+    要件:
+    - use(middleware): void
+    - execute(context): Promise<void>
+    - next() で次のミドルウェアを呼び出し
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { MiddlewareRunner } from "../solution";
+      describe("MiddlewareRunner", () => {
+        it("executes in order", async () => {
+          const runner = new MiddlewareRunner<{ log: string[] }>();
+          runner.use(async (ctx, next) => { ctx.log.push("1"); await next(); });
+          runner.use(async (ctx, next) => { ctx.log.push("2"); await next(); });
+          const ctx = { log: [] as string[] };
+          await runner.execute(ctx);
+          expect(ctx.log).toEqual(["1", "2"]);
+        });
+        it("can modify context", async () => {
+          const runner = new MiddlewareRunner<{ value: number }>();
+          runner.use(async (ctx, next) => { ctx.value += 1; await next(); });
+          runner.use(async (ctx, next) => { ctx.value *= 2; await next(); });
+          const ctx = { value: 5 };
+          await runner.execute(ctx);
+          expect(ctx.value).toBe(12);
+        });
+        it("can short-circuit", async () => {
+          const runner = new MiddlewareRunner<{ done: boolean }>();
+          runner.use(async (ctx, next) => { ctx.done = true; }); // no next()
+          runner.use(async (ctx, next) => { throw new Error("should not reach"); });
+          const ctx = { done: false };
+          await runner.execute(ctx);
+          expect(ctx.done).toBe(true);
+        });
+      });
+
+- id: ts_agent_L2_retry_with_backoff
+  lang: typescript
+  prompt: |
+    指数バックオフ付きリトライを実装。解説不要、コードのみ。
+    要件:
+    - retryWithBackoff<T>(fn, options): Promise<T>
+    - options: maxRetries, initialDelay, maxDelay, factor
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { retryWithBackoff } from "../solution";
+      describe("retryWithBackoff", () => {
+        it("succeeds on first try", async () => {
+          const result = await retryWithBackoff(() => Promise.resolve("ok"), { maxRetries: 3 });
+          expect(result).toBe("ok");
+        });
+        it("retries with backoff", async () => {
+          let attempts = 0;
+          const fn = () => {
+            attempts++;
+            if (attempts < 3) return Promise.reject(new Error());
+            return Promise.resolve("success");
+          };
+          const t0 = Date.now();
+          await retryWithBackoff(fn, { maxRetries: 3, initialDelay: 10, factor: 2 });
+          const dt = Date.now() - t0;
+          expect(dt).toBeGreaterThanOrEqual(20); // 10 + 20 = 30ms minimum
+        });
+        it("throws after max retries", async () => {
+          await expect(
+            retryWithBackoff(() => Promise.reject(new Error("fail")), { maxRetries: 2 })
+          ).rejects.toThrow();
+        });
+      });
+
+# =============================================================================
+# Level 3 追加問題
+# =============================================================================
+
+- id: ts_agent_L3_command_pattern
+  lang: typescript
+  prompt: |
+    コマンドパターン（Undo/Redo対応）を実装。解説不要、コードのみ。
+    要件:
+    - Command インターフェース (execute, undo)
+    - CommandManager (execute, undo, redo, canUndo, canRedo)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { CommandManager, type Command } from "../solution";
+      describe("CommandManager", () => {
+        it("executes commands", () => {
+          let value = 0;
+          const cmd: Command = {
+            execute: () => { value += 10; },
+            undo: () => { value -= 10; }
+          };
+          const manager = new CommandManager();
+          manager.execute(cmd);
+          expect(value).toBe(10);
+        });
+        it("undoes commands", () => {
+          let value = 0;
+          const cmd: Command = {
+            execute: () => { value += 10; },
+            undo: () => { value -= 10; }
+          };
+          const manager = new CommandManager();
+          manager.execute(cmd);
+          manager.undo();
+          expect(value).toBe(0);
+        });
+        it("redoes commands", () => {
+          let value = 0;
+          const cmd: Command = {
+            execute: () => { value += 10; },
+            undo: () => { value -= 10; }
+          };
+          const manager = new CommandManager();
+          manager.execute(cmd);
+          manager.undo();
+          manager.redo();
+          expect(value).toBe(10);
+        });
+        it("tracks canUndo/canRedo", () => {
+          const manager = new CommandManager();
+          expect(manager.canUndo()).toBe(false);
+          manager.execute({ execute: () => {}, undo: () => {} });
+          expect(manager.canUndo()).toBe(true);
+        });
+      });
+
+- id: ts_agent_L3_memento
+  lang: typescript
+  prompt: |
+    Mementoパターン（スナップショット保存/復元）を実装。解説不要、コードのみ。
+    要件:
+    - Originator (state管理、createMemento, restore)
+    - Caretaker (履歴管理、save, restore, list)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { TextEditor, History } from "../solution";
+      describe("Memento Pattern", () => {
+        it("saves and restores state", () => {
+          const editor = new TextEditor();
+          const history = new History();
+          editor.write("Hello");
+          history.save(editor.createMemento());
+          editor.write(" World");
+          expect(editor.getContent()).toBe("Hello World");
+          editor.restore(history.getLast());
+          expect(editor.getContent()).toBe("Hello");
+        });
+        it("maintains history", () => {
+          const editor = new TextEditor();
+          const history = new History();
+          editor.write("A");
+          history.save(editor.createMemento());
+          editor.write("B");
+          history.save(editor.createMemento());
+          expect(history.list().length).toBe(2);
+        });
+      });
+
+- id: ts_agent_L3_interpreter
+  lang: typescript
+  prompt: |
+    簡単な式インタプリタを実装。解説不要、コードのみ。
+    要件:
+    - 四則演算 (+, -, *, /)
+    - 括弧サポート
+    - 変数サポート (context で渡す)
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { evaluate } from "../solution";
+      describe("Interpreter", () => {
+        it("evaluates simple expression", () => {
+          expect(evaluate("2 + 3")).toBe(5);
+        });
+        it("handles precedence", () => {
+          expect(evaluate("2 + 3 * 4")).toBe(14);
+        });
+        it("handles parentheses", () => {
+          expect(evaluate("(2 + 3) * 4")).toBe(20);
+        });
+        it("handles variables", () => {
+          expect(evaluate("x + y", { x: 10, y: 5 })).toBe(15);
+        });
+        it("handles division", () => {
+          expect(evaluate("10 / 2")).toBe(5);
+        });
+      });
+
+- id: ts_agent_L3_spec_builder
+  lang: typescript
+  prompt: |
+    Specificationパターンを実装。解説不要、コードのみ。
+    要件:
+    - Specification<T> インターフェース (isSatisfiedBy)
+    - and, or, not 組み合わせ
+    - ビルダーAPI
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Spec } from "../solution";
+      describe("Specification", () => {
+        it("checks single spec", () => {
+          const isAdult = Spec.create<{age:number}>(u => u.age >= 18);
+          expect(isAdult.isSatisfiedBy({ age: 20 })).toBe(true);
+          expect(isAdult.isSatisfiedBy({ age: 15 })).toBe(false);
+        });
+        it("combines with and", () => {
+          const isAdult = Spec.create<{age:number,premium:boolean}>(u => u.age >= 18);
+          const isPremium = Spec.create<{age:number,premium:boolean}>(u => u.premium);
+          const spec = isAdult.and(isPremium);
+          expect(spec.isSatisfiedBy({ age: 25, premium: true })).toBe(true);
+          expect(spec.isSatisfiedBy({ age: 25, premium: false })).toBe(false);
+        });
+        it("combines with or", () => {
+          const isYoung = Spec.create<{age:number}>(u => u.age < 18);
+          const isSenior = Spec.create<{age:number}>(u => u.age >= 65);
+          const spec = isYoung.or(isSenior);
+          expect(spec.isSatisfiedBy({ age: 10 })).toBe(true);
+          expect(spec.isSatisfiedBy({ age: 30 })).toBe(false);
+        });
+        it("negates with not", () => {
+          const isAdult = Spec.create<{age:number}>(u => u.age >= 18);
+          const isMinor = isAdult.not();
+          expect(isMinor.isSatisfiedBy({ age: 15 })).toBe(true);
+        });
+      });
+
+# =============================================================================
+# Level 4 追加問題
+# =============================================================================
+
+- id: ts_agent_L4_event_bus
+  lang: typescript
+  prompt: |
+    イベントバス（マイクロサービス間通信想定）を実装。解説不要、コードのみ。
+    要件:
+    - 型安全なイベント定義
+    - 非同期ハンドラ
+    - ワイルドカード購読
+    - デッドレターキュー
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { EventBus } from "../solution";
+      describe("EventBus", () => {
+        it("publishes and handles events", async () => {
+          const bus = new EventBus();
+          const events: string[] = [];
+          bus.on("user.created", async (e) => { events.push(`created:${e.id}`); });
+          await bus.emit("user.created", { id: "u1" });
+          expect(events).toContain("created:u1");
+        });
+        it("supports wildcard", async () => {
+          const bus = new EventBus();
+          const events: string[] = [];
+          bus.on("user.*", async (e, type) => { events.push(type); });
+          await bus.emit("user.created", {});
+          await bus.emit("user.deleted", {});
+          expect(events).toContain("user.created");
+          expect(events).toContain("user.deleted");
+        });
+        it("handles errors with dead letter", async () => {
+          const bus = new EventBus();
+          const deadLetters: any[] = [];
+          bus.onDeadLetter((event, error) => { deadLetters.push(event); });
+          bus.on("fail", async () => { throw new Error("fail"); });
+          await bus.emit("fail", { data: "test" });
+          expect(deadLetters.length).toBe(1);
+        });
+      });
+
+- id: ts_agent_L4_query_executor
+  lang: typescript
+  prompt: |
+    クエリエグゼキュータ（キャッシュ・バッチ対応）を実装。解説不要、コードのみ。
+    要件:
+    - クエリの実行
+    - 結果キャッシュ
+    - バッチ処理（DataLoader風）
+    - TTL
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { QueryExecutor } from "../solution";
+      describe("QueryExecutor", () => {
+        it("executes queries", async () => {
+          const executor = new QueryExecutor();
+          executor.register("getUser", async (id: string) => ({ id, name: `User${id}` }));
+          const user = await executor.execute("getUser", "1");
+          expect(user.name).toBe("User1");
+        });
+        it("caches results", async () => {
+          let calls = 0;
+          const executor = new QueryExecutor();
+          executor.register("getData", async () => { calls++; return "data"; });
+          await executor.execute("getData");
+          await executor.execute("getData");
+          expect(calls).toBe(1);
+        });
+        it("batches requests", async () => {
+          let batchCalls = 0;
+          const executor = new QueryExecutor();
+          executor.registerBatch("getUsers", async (ids: string[]) => {
+            batchCalls++;
+            return ids.map(id => ({ id }));
+          });
+          const p1 = executor.execute("getUsers", "1");
+          const p2 = executor.execute("getUsers", "2");
+          await Promise.all([p1, p2]);
+          expect(batchCalls).toBe(1);
+        });
+      });
+
+- id: ts_agent_L4_actor_model
+  lang: typescript
+  prompt: |
+    アクターモデルを実装。解説不要、コードのみ。
+    要件:
+    - Actor クラス (receive, send)
+    - ActorSystem (spawn, lookup)
+    - メッセージキュー
+    - 非同期メッセージ処理
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { ActorSystem, Actor } from "../solution";
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+      describe("ActorModel", () => {
+        it("sends and receives messages", async () => {
+          const system = new ActorSystem();
+          const received: string[] = [];
+          class EchoActor extends Actor {
+            receive(msg: any) { received.push(msg); }
+          }
+          system.spawn("echo", EchoActor);
+          system.send("echo", "hello");
+          await sleep(10);
+          expect(received).toContain("hello");
+        });
+        it("processes messages in order", async () => {
+          const system = new ActorSystem();
+          const order: number[] = [];
+          class OrderActor extends Actor {
+            receive(msg: number) { order.push(msg); }
+          }
+          system.spawn("order", OrderActor);
+          system.send("order", 1);
+          system.send("order", 2);
+          system.send("order", 3);
+          await sleep(20);
+          expect(order).toEqual([1, 2, 3]);
+        });
+      });
+
+# =============================================================================
+# TypeScript固有の強み: 高度な型システム
+# =============================================================================
+
+- id: ts_conditional_types
+  lang: typescript
+  prompt: |
+    Conditional Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    - Flatten<T> - 配列なら要素型、そうでなければT
+    - NonNullable<T> - nullとundefinedを除去（自作）
+    - ReturnTypeOf<T> - 関数の戻り値型を取得（自作）
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { Flatten, MyNonNullable, ReturnTypeOf } from "../solution";
+      describe("Conditional Types", () => {
+        it("Flatten works", () => {
+          type A = Flatten<string[]>;
+          type B = Flatten<number>;
+          const a: A = "test";
+          const b: B = 42;
+          expect(typeof a).toBe("string");
+          expect(typeof b).toBe("number");
+        });
+        it("MyNonNullable works", () => {
+          type A = MyNonNullable<string | null | undefined>;
+          const a: A = "test";
+          expect(a).toBe("test");
+        });
+        it("ReturnTypeOf works", () => {
+          type Fn = () => { id: number };
+          type R = ReturnTypeOf<Fn>;
+          const r: R = { id: 1 };
+          expect(r.id).toBe(1);
+        });
+      });
+
+- id: ts_mapped_types
+  lang: typescript
+  prompt: |
+    Mapped Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    - Readonly<T> - 全プロパティをreadonly（自作）
+    - Partial<T> - 全プロパティをoptional（自作）
+    - Required<T> - 全プロパティを必須（自作）
+    - Mutable<T> - readonlyを除去
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { MyReadonly, MyPartial, MyRequired, Mutable } from "../solution";
+      describe("Mapped Types", () => {
+        it("MyReadonly works", () => {
+          type User = { name: string };
+          type RO = MyReadonly<User>;
+          const u: RO = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("MyPartial works", () => {
+          type User = { name: string; age: number };
+          type P = MyPartial<User>;
+          const u: P = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("MyRequired works", () => {
+          type User = { name?: string };
+          type R = MyRequired<User>;
+          const u: R = { name: "test" };
+          expect(u.name).toBe("test");
+        });
+        it("Mutable works", () => {
+          type RO = { readonly name: string };
+          type M = Mutable<RO>;
+          const u: M = { name: "test" };
+          u.name = "changed";
+          expect(u.name).toBe("changed");
+        });
+      });
+
+- id: ts_template_literal
+  lang: typescript
+  prompt: |
+    Template Literal Typesを使った型を実装。解説不要、コードのみ。
+    - EventName<T> - "on" + Capitalize<T> (例: "click" → "onClick")
+    - PathParams<T> - URLパスからパラメータを抽出 (例: "/users/:id" → { id: string })
+    - CSSProperty - "margin-top" → "marginTop" 変換
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { EventName, PathParams } from "../solution";
+      import { toEventName, extractParams } from "../solution";
+      describe("Template Literal Types", () => {
+        it("EventName type", () => {
+          type E = EventName<"click">;
+          const e: E = "onClick";
+          expect(e).toBe("onClick");
+        });
+        it("toEventName function", () => {
+          expect(toEventName("click")).toBe("onClick");
+          expect(toEventName("mouseOver")).toBe("onMouseOver");
+        });
+        it("PathParams type", () => {
+          type P = PathParams<"/users/:id/posts/:postId">;
+          const p: P = { id: "1", postId: "2" };
+          expect(p.id).toBe("1");
+        });
+        it("extractParams function", () => {
+          const params = extractParams("/users/:id", "/users/123");
+          expect(params.id).toBe("123");
+        });
+      });
+
+- id: ts_infer_keyword
+  lang: typescript
+  prompt: |
+    inferキーワードを使った型を実装。解説不要、コードのみ。
+    - FirstArg<T> - 関数の第一引数の型
+    - PromiseValue<T> - Promise<X>からXを取得
+    - ArrayItem<T> - 配列の要素型
+    - InstanceOf<T> - コンストラクタからインスタンス型
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import type { FirstArg, PromiseValue, ArrayItem, InstanceOf } from "../solution";
+      describe("Infer Keyword", () => {
+        it("FirstArg", () => {
+          type Fn = (x: string, y: number) => void;
+          type A = FirstArg<Fn>;
+          const a: A = "test";
+          expect(typeof a).toBe("string");
+        });
+        it("PromiseValue", () => {
+          type P = PromiseValue<Promise<number>>;
+          const p: P = 42;
+          expect(p).toBe(42);
+        });
+        it("ArrayItem", () => {
+          type A = ArrayItem<string[]>;
+          const a: A = "test";
+          expect(typeof a).toBe("string");
+        });
+        it("InstanceOf", () => {
+          class User { name = "test"; }
+          type I = InstanceOf<typeof User>;
+          const i: I = new User();
+          expect(i.name).toBe("test");
+        });
+      });
+
+- id: ts_discriminated_union
+  lang: typescript
+  prompt: |
+    Discriminated Unionを使ったパターンマッチングを実装。解説不要、コードのみ。
+    - type Action = { type: "INCREMENT" } | { type: "DECREMENT" } | { type: "SET"; value: number }
+    - reducer(state: number, action: Action): number
+    - 型安全なアクションクリエーター
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { reducer, increment, decrement, set, type Action } from "../solution";
+      describe("Discriminated Union", () => {
+        it("handles INCREMENT", () => {
+          expect(reducer(0, increment())).toBe(1);
+        });
+        it("handles DECREMENT", () => {
+          expect(reducer(5, decrement())).toBe(4);
+        });
+        it("handles SET", () => {
+          expect(reducer(0, set(10))).toBe(10);
+        });
+        it("type safety", () => {
+          const action: Action = { type: "SET", value: 42 };
+          expect(reducer(0, action)).toBe(42);
+        });
+      });
+
+# =============================================================================
+# TypeScript固有の強み: デコレータ
+# =============================================================================
+
+- id: ts_decorators
+  lang: typescript
+  prompt: |
+    TypeScriptデコレータを実装。解説不要、コードのみ。
+    - @log - メソッド呼び出しをログ
+    - @memoize - 結果をキャッシュ
+    - @validate - 引数バリデーション
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { log, memoize, createLogger } from "../solution";
+      describe("Decorators", () => {
+        it("log decorator captures calls", () => {
+          const logs: string[] = [];
+          const logger = createLogger((msg) => logs.push(msg));
+          class Calc {
+            @logger
+            add(a: number, b: number) { return a + b; }
+          }
+          const c = new Calc();
+          c.add(1, 2);
+          expect(logs.length).toBeGreaterThan(0);
+        });
+        it("memoize caches results", () => {
+          let calls = 0;
+          class Calc {
+            @memoize
+            expensive(n: number) { calls++; return n * 2; }
+          }
+          const c = new Calc();
+          c.expensive(5);
+          c.expensive(5);
+          expect(calls).toBe(1);
+        });
+      });
+
+# =============================================================================
+# フレームワーク: React パターン
+# =============================================================================
+
+- id: ts_react_hooks
+  lang: typescript
+  prompt: |
+    React風のカスタムフックを実装（実際のReactなし）。解説不要、コードのみ。
+    - useState<T>(initial: T): [T, (v: T | ((prev: T) => T)) => void]
+    - useEffect(effect: () => void | (() => void), deps?: any[]): void
+    - useMemo<T>(factory: () => T, deps: any[]): T
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { useState, useEffect, useMemo, resetHooks } from "../solution";
+      describe("React Hooks", () => {
+        beforeEach(() => resetHooks());
+        it("useState returns state and setter", () => {
+          const [count, setCount] = useState(0);
+          expect(count).toBe(0);
+          setCount(5);
+          const [count2] = useState(0);
+          expect(count2).toBe(5);
+        });
+        it("useState with updater function", () => {
+          const [count, setCount] = useState(10);
+          setCount(prev => prev + 1);
+          const [count2] = useState(0);
+          expect(count2).toBe(11);
+        });
+        it("useMemo caches value", () => {
+          let calls = 0;
+          const value = useMemo(() => { calls++; return 42; }, [1]);
+          const value2 = useMemo(() => { calls++; return 42; }, [1]);
+          expect(calls).toBe(1);
+        });
+      });
+
+- id: ts_react_context
+  lang: typescript
+  prompt: |
+    React Context風のAPIを実装（実際のReactなし）。解説不要、コードのみ。
+    - createContext<T>(defaultValue: T): Context<T>
+    - Context.Provider で値を提供
+    - useContext(context) で値を取得
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { createContext, useContext, ContextProvider } from "../solution";
+      describe("React Context", () => {
+        it("uses default value", () => {
+          const ThemeContext = createContext("light");
+          const theme = useContext(ThemeContext);
+          expect(theme).toBe("light");
+        });
+        it("uses provided value", () => {
+          const ThemeContext = createContext("light");
+          const provider = new ContextProvider(ThemeContext, "dark");
+          provider.run(() => {
+            const theme = useContext(ThemeContext);
+            expect(theme).toBe("dark");
+          });
+        });
+        it("nested providers", () => {
+          const Ctx = createContext(0);
+          const p1 = new ContextProvider(Ctx, 1);
+          p1.run(() => {
+            expect(useContext(Ctx)).toBe(1);
+            const p2 = new ContextProvider(Ctx, 2);
+            p2.run(() => {
+              expect(useContext(Ctx)).toBe(2);
+            });
+          });
+        });
+      });
+
+- id: ts_react_reducer
+  lang: typescript
+  prompt: |
+    useReducer風のAPIを実装。解説不要、コードのみ。
+    - useReducer<S, A>(reducer: (state: S, action: A) => S, initialState: S): [S, (action: A) => void]
+    - 型安全なアクション定義
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { useReducer, resetHooks } from "../solution";
+      type Action = { type: "INC" } | { type: "DEC" } | { type: "SET"; value: number };
+      const reducer = (state: number, action: Action) => {
+        switch (action.type) {
+          case "INC": return state + 1;
+          case "DEC": return state - 1;
+          case "SET": return action.value;
+        }
+      };
+      describe("useReducer", () => {
+        beforeEach(() => resetHooks());
+        it("returns state and dispatch", () => {
+          const [state, dispatch] = useReducer(reducer, 0);
+          expect(state).toBe(0);
+        });
+        it("dispatches actions", () => {
+          const [, dispatch] = useReducer(reducer, 0);
+          dispatch({ type: "INC" });
+          const [state2] = useReducer(reducer, 0);
+          expect(state2).toBe(1);
+        });
+        it("handles SET action", () => {
+          const [, dispatch] = useReducer(reducer, 0);
+          dispatch({ type: "SET", value: 100 });
+          const [state2] = useReducer(reducer, 0);
+          expect(state2).toBe(100);
+        });
+      });
+
+# =============================================================================
+# フレームワーク: Express/バックエンド パターン
+# =============================================================================
+
+- id: ts_express_middleware
+  lang: typescript
+  prompt: |
+    Express風のミドルウェアシステムを実装。解説不要、コードのみ。
+    - Request, Response, NextFunction の型定義
+    - app.use(middleware) でミドルウェア登録
+    - app.get/post(path, handler) でルート登録
+    - req.params, req.query, req.body 対応
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { createApp, type Request, type Response } from "../solution";
+      describe("Express-like App", () => {
+        it("handles GET request", async () => {
+          const app = createApp();
+          app.get("/users", (req, res) => { res.json([{ id: 1 }]); });
+          const res = await app.handle({ method: "GET", path: "/users" });
+          expect(res.body).toEqual([{ id: 1 }]);
+        });
+        it("extracts params", async () => {
+          const app = createApp();
+          app.get("/users/:id", (req, res) => { res.json({ id: req.params.id }); });
+          const res = await app.handle({ method: "GET", path: "/users/123" });
+          expect(res.body.id).toBe("123");
+        });
+        it("runs middleware", async () => {
+          const app = createApp();
+          const logs: string[] = [];
+          app.use((req, res, next) => { logs.push("m1"); next(); });
+          app.get("/test", (req, res) => { res.json({ ok: true }); });
+          await app.handle({ method: "GET", path: "/test" });
+          expect(logs).toContain("m1");
+        });
+        it("middleware can short-circuit", async () => {
+          const app = createApp();
+          app.use((req, res, next) => { res.status(401).json({ error: "Unauthorized" }); });
+          app.get("/protected", (req, res) => { res.json({ secret: true }); });
+          const res = await app.handle({ method: "GET", path: "/protected" });
+          expect(res.statusCode).toBe(401);
+        });
+      });
+
+- id: ts_validation_schema
+  lang: typescript
+  prompt: |
+    Zod風のバリデーションスキーマを実装。解説不要、コードのみ。
+    - z.string(), z.number(), z.boolean()
+    - z.object({...})
+    - z.array(schema)
+    - .optional(), .nullable()
+    - .parse(data) - バリデーション＋型推論
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { z } from "../solution";
+      describe("Validation Schema", () => {
+        it("validates string", () => {
+          const schema = z.string();
+          expect(schema.parse("hello")).toBe("hello");
+          expect(() => schema.parse(123)).toThrow();
+        });
+        it("validates object", () => {
+          const schema = z.object({ name: z.string(), age: z.number() });
+          const result = schema.parse({ name: "Alice", age: 30 });
+          expect(result.name).toBe("Alice");
+        });
+        it("validates array", () => {
+          const schema = z.array(z.number());
+          expect(schema.parse([1, 2, 3])).toEqual([1, 2, 3]);
+        });
+        it("handles optional", () => {
+          const schema = z.object({ name: z.string(), age: z.number().optional() });
+          const result = schema.parse({ name: "Bob" });
+          expect(result.name).toBe("Bob");
+        });
+        it("handles nullable", () => {
+          const schema = z.string().nullable();
+          expect(schema.parse(null)).toBe(null);
+          expect(schema.parse("test")).toBe("test");
+        });
+      });
+
+- id: ts_orm_query
+  lang: typescript
+  prompt: |
+    ORM風のクエリビルダーを実装。解説不要、コードのみ。
+    - Repository<T> クラス
+    - find(), findOne(), where(), orderBy(), limit()
+    - create(), update(), delete()
+    - 型安全なカラム指定
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Repository, type User } from "../solution";
+      describe("ORM Query", () => {
+        it("finds all", async () => {
+          const repo = new Repository<User>([
+            { id: 1, name: "Alice" },
+            { id: 2, name: "Bob" }
+          ]);
+          const users = await repo.find();
+          expect(users.length).toBe(2);
+        });
+        it("finds with where", async () => {
+          const repo = new Repository<User>([
+            { id: 1, name: "Alice" },
+            { id: 2, name: "Bob" }
+          ]);
+          const users = await repo.where("name", "=", "Alice").find();
+          expect(users.length).toBe(1);
+        });
+        it("finds one", async () => {
+          const repo = new Repository<User>([{ id: 1, name: "Alice" }]);
+          const user = await repo.findOne(1);
+          expect(user?.name).toBe("Alice");
+        });
+        it("creates record", async () => {
+          const repo = new Repository<User>([]);
+          const user = await repo.create({ id: 1, name: "New" });
+          expect(user.name).toBe("New");
+          expect((await repo.find()).length).toBe(1);
+        });
+      });
+
+# =============================================================================
+# バグ修正問題追加
+# =============================================================================
+
+- id: ts_this_binding_bug
+  lang: typescript
+  prompt: |
+    次のコードにはthisバインディングのバグがあります。修正してください。解説不要、コードのみ。
+
+    問題: クラスメソッドをコールバックとして渡すとthisが失われる
+
+    元コード:
+    class Counter {
+        count = 0;
+        increment() {
+            this.count++;
+        }
+        getCount() {
+            return this.count;
+        }
+    }
+
+    期待: setTimeout(counter.increment, 0) でも正しく動作
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { Counter } from "../solution";
+      describe("Counter this binding", () => {
+        it("works with direct call", () => {
+          const c = new Counter();
+          c.increment();
+          expect(c.getCount()).toBe(1);
+        });
+        it("works as callback", async () => {
+          const c = new Counter();
+          await new Promise<void>(resolve => {
+            setTimeout(() => { c.increment(); resolve(); }, 0);
+          });
+          expect(c.getCount()).toBe(1);
+        });
+        it("works with array methods", () => {
+          const c = new Counter();
+          [1, 2, 3].forEach(c.increment);
+          expect(c.getCount()).toBe(3);
+        });
+      });
+
+- id: ts_equality_bug
+  lang: typescript
+  prompt: |
+    次のコードには等価性チェックのバグがあります。修正してください。解説不要、コードのみ。
+
+    問題: オブジェクトの等価性を正しく比較できない
+
+    元コード:
+    function isEqual(a: any, b: any): boolean {
+        return a == b;
+    }
+
+    期待: 深い比較で正しく判定
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { isEqual } from "../solution";
+      describe("isEqual", () => {
+        it("compares primitives", () => {
+          expect(isEqual(1, 1)).toBe(true);
+          expect(isEqual(1, 2)).toBe(false);
+          expect(isEqual("a", "a")).toBe(true);
+        });
+        it("compares objects", () => {
+          expect(isEqual({ a: 1 }, { a: 1 })).toBe(true);
+          expect(isEqual({ a: 1 }, { a: 2 })).toBe(false);
+        });
+        it("compares nested objects", () => {
+          expect(isEqual({ a: { b: 1 } }, { a: { b: 1 } })).toBe(true);
+          expect(isEqual({ a: { b: 1 } }, { a: { b: 2 } })).toBe(false);
+        });
+        it("compares arrays", () => {
+          expect(isEqual([1, 2], [1, 2])).toBe(true);
+          expect(isEqual([1, 2], [1, 3])).toBe(false);
+        });
+        it("handles null/undefined", () => {
+          expect(isEqual(null, null)).toBe(true);
+          expect(isEqual(null, undefined)).toBe(false);
+        });
+      });
+
+- id: ts_async_iteration_bug
+  lang: typescript
+  prompt: |
+    次のコードには非同期イテレーションのバグがあります。修正してください。解説不要、コードのみ。
+
+    問題: for...of で非同期イテレータを正しく処理できない
+
+    元コード:
+    async function processItems(items: AsyncIterable<number>): Promise<number[]> {
+        const results = [];
+        for (const item of items) {
+            results.push(item * 2);
+        }
+        return results;
+    }
+
+    期待: for await...of を使って正しく処理
+  tests:
+    tests/solution.test.ts: |
+      import { describe, it, expect } from "vitest";
+      import { processItems } from "../solution";
+      async function* asyncGen() { yield 1; yield 2; yield 3; }
+      describe("processItems", () => {
+        it("processes async iterable", async () => {
+          const result = await processItems(asyncGen());
+          expect(result).toEqual([2, 4, 6]);
+        });
+        it("handles empty", async () => {
+          async function* empty() {}
+          const result = await processItems(empty());
+          expect(result).toEqual([]);
+        });
+      });
