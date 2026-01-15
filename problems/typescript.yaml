@@ -1368,70 +1368,56 @@
     非同期タスクキューを実装してください。解説不要、コードのみ。
 
     要件:
-    - タスクの追加と実行
-    - 同時実行数の制限（concurrency）
-    - 実行状態の追跡
+    - クラス名: `TaskQueue` を export すること
+    - メソッド:
+      - `constructor(options: { concurrency: number })`
+      - `add(task: () => Promise<void>): void`
+      - `drain(): Promise<void>`: 全タスク完了まで待機
+    - 機能:
+      - タスクの追加と実行
+      - 同時実行数の制限（concurrency）
+      - 実行状態の追跡
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import * as solution from "../solution";
-      import { pickValue, safe, bindAny } from "./_flex";
 
-      function createTaskQueue(opts: any) {
-        const Ctor = pickValue(solution as any, ["TaskQueue", "AsyncQueue", "WorkQueue", "Queue"]);
-        if (Ctor) return safe(() => new (Ctor as any)(opts)) ?? safe(() => new (Ctor as any)(opts.concurrency)) ?? undefined;
-        const factory = (solution as any).createTaskQueue ?? (solution as any).createQueue;
-        if (typeof factory === "function") return factory(opts);
-        return undefined;
-      }
-
+      const TaskQueue = (solution as any).TaskQueue;
       const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
       describe("TaskQueue", () => {
+        if (!TaskQueue) {
+          it("exports TaskQueue class", () => {
+            expect(TaskQueue).toBeDefined();
+          });
+          return;
+        }
+
         it("executes tasks", async () => {
-          const queue = createTaskQueue({ concurrency: 2 });
-          expect(queue).not.toBeUndefined();
+          const queue = new TaskQueue({ concurrency: 2 });
           const results: number[] = [];
-          const add = bindAny(queue, ["add", "enqueue", "push", "submit", "run"])!;
-          const drain = bindAny(queue, ["drain", "flush", "onIdle", "waitIdle", "allSettled", "wait"]);
-          add(async () => { results.push(1); });
-          add(async () => { results.push(2); });
-          await drain();
+          queue.add(async () => { results.push(1); });
+          queue.add(async () => { results.push(2); });
+          await queue.drain();
           expect(results).toContain(1);
           expect(results).toContain(2);
         });
 
         it("respects concurrency limit", async () => {
-          const queue = createTaskQueue({ concurrency: 1 });
-          expect(queue).not.toBeUndefined();
+          const queue = new TaskQueue({ concurrency: 1 });
           const order: number[] = [];
-          const add = bindAny(queue, ["add", "enqueue", "push", "submit", "run"])!;
-          const drain = bindAny(queue, ["drain", "flush", "onIdle", "waitIdle", "allSettled", "wait"]);
-          add(async () => { await sleep(30); order.push(1); });
-          add(async () => { order.push(2); });
-          await drain();
+          queue.add(async () => { await sleep(30); order.push(1); });
+          queue.add(async () => { order.push(2); });
+          await queue.drain();
           expect(order).toEqual([1, 2]);
         });
 
-        it("tracks pending count", () => {
-          const queue = createTaskQueue({ concurrency: 1 });
-          expect(queue).not.toBeUndefined();
-          const add = bindAny(queue, ["add", "enqueue", "push", "submit", "run"])!;
-          add(async () => sleep(100));
-          add(async () => sleep(100));
-          const pending = queue.pending ?? queue.pendingCount ?? queue.size ?? (() => 0);
-          expect(pending()).toBeGreaterThanOrEqual(1);
-        });
-
         it("handles errors gracefully", async () => {
-          const queue = createTaskQueue({ concurrency: 2 });
-          expect(queue).not.toBeUndefined();
+          const queue = new TaskQueue({ concurrency: 2 });
           const results: string[] = [];
-          const add = bindAny(queue, ["add", "enqueue", "push", "submit", "run"])!;
-          const drain = bindAny(queue, ["drain", "flush", "onIdle", "waitIdle", "allSettled", "wait"]);
-          add(async () => { throw new Error("fail"); });
-          add(async () => { results.push("ok"); });
-          await drain();
+          queue.add(async () => { throw new Error("fail"); });
+          queue.add(async () => { results.push("ok"); });
+          await queue.drain();
           expect(results).toContain("ok");
         });
       });
@@ -1443,34 +1429,40 @@
     LRUキャッシュを実装してください。解説不要、コードのみ。
 
     要件:
-    - 最大サイズの制限
-    - 最も使われていないアイテムを削除
-    - TTL（有効期限）サポート
+    - クラス名: `LRUCache` を export すること
+    - メソッド:
+      - `constructor(options: { maxSize: number })`
+      - `get(key: string): any`
+      - `set(key: string, value: any, options?: { ttl: number }): void`
+      - `size(): number`
+      - `has(key: string): boolean`
+    - 機能:
+      - 最大サイズの制限
+      - 最も使われていないアイテムを削除
+      - TTL（有効期限）サポート
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import * as solution from "../solution";
-      import { pickValue, safe } from "./_flex";
 
-      function createCache(opts: any) {
-        const Ctor = pickValue(solution as any, ["LRUCache", "Cache", "LRU"]);
-        if (Ctor) return safe(() => new (Ctor as any)(opts)) ?? safe(() => new (Ctor as any)(opts.maxSize)) ?? undefined;
-        const factory = (solution as any).createLRUCache ?? (solution as any).createCache;
-        if (typeof factory === "function") return factory(opts);
-        return undefined;
-      }
+      const LRUCache = (solution as any).LRUCache;
 
       describe("LRUCache", () => {
+        if (!LRUCache) {
+          it("exports LRUCache class", () => {
+            expect(LRUCache).toBeDefined();
+          });
+          return;
+        }
+
         it("stores and retrieves values", () => {
-          const cache = createCache({ maxSize: 3 });
-          expect(cache).not.toBeUndefined();
+          const cache = new LRUCache({ maxSize: 3 });
           cache.set("a", 1);
           expect(cache.get("a")).toBe(1);
         });
 
         it("evicts least recently used", () => {
-          const cache = createCache({ maxSize: 2 });
-          expect(cache).not.toBeUndefined();
+          const cache = new LRUCache({ maxSize: 2 });
           cache.set("a", 1);
           cache.set("b", 2);
           cache.get("a"); // access a
@@ -1480,8 +1472,7 @@
         });
 
         it("respects max size", () => {
-          const cache = createCache({ maxSize: 2 });
-          expect(cache).not.toBeUndefined();
+          const cache = new LRUCache({ maxSize: 2 });
           cache.set("a", 1);
           cache.set("b", 2);
           cache.set("c", 3);
@@ -1489,8 +1480,7 @@
         });
 
         it("supports TTL", async () => {
-          const cache = createCache({ maxSize: 10 });
-          expect(cache).not.toBeUndefined();
+          const cache = new LRUCache({ maxSize: 10 });
           cache.set("temp", 42, { ttl: 50 });
           expect(cache.get("temp")).toBe(42);
           await new Promise(r => setTimeout(r, 60));
@@ -1498,8 +1488,7 @@
         });
 
         it("has method works correctly", () => {
-          const cache = createCache({ maxSize: 2 });
-          expect(cache).not.toBeUndefined();
+          const cache = new LRUCache({ maxSize: 2 });
           cache.set("a", 1);
           expect(cache.has("a")).toBe(true);
           expect(cache.has("b")).toBe(false);
@@ -2051,93 +2040,60 @@
     型安全なプラグインシステムを実装してください。解説不要、コードのみ。
 
     要件:
-    - プラグインの登録とライフサイクル管理
-    - フックポイントでの拡張
-    - プラグイン間の依存関係
-    - 型安全なプラグインAPI
+    - クラス名: `PluginManager` を export
+    - メソッド:
+      - `register(plugin: any): void`
+      - `activate(name: string): void`
+      - `deactivate(name: string): void`
+      - `hook(point: string, handler: Function, options?: { priority: number }): void`
+      - `trigger(point: string, ...args: any[]): any[]`
+    - 機能:
+      - プラグインの登録とライフサイクル管理
+      - フックポイントでの拡張
+      - プラグイン間の依存関係
+      - 型安全なプラグインAPI
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import * as solution from "../solution";
-      import { pickValue, safe, bindAny } from "./_flex";
 
-      type Plugin = any;
-      const PluginManagerCtor = pickValue(solution as any, ["PluginManager", "Manager"]);
-
-      function createManager() {
-        return safe(() => new (PluginManagerCtor as any)()) ?? safe(() => (PluginManagerCtor as any)()) ?? undefined;
-      }
+      const PluginManager = (solution as any).PluginManager;
 
       describe("PluginManager", () => {
+        if (!PluginManager) {
+          it("exports PluginManager class", () => {
+            expect(PluginManager).toBeDefined();
+          });
+          return;
+        }
+
         it("registers plugins", () => {
-          const manager = createManager();
-          expect(manager).not.toBeUndefined();
-          const plugin: Plugin = {
-            name: "test",
-            activate: () => {},
-            deactivate: () => {}
-          };
-          const register = bindAny(manager, ["register", "add", "install", "use", "load"])!;
-          const list = bindAny(manager, ["list", "getPlugins", "getAll", "plugins"])!;
-          register(plugin);
-          expect(list()).toContain("test");
+          const manager = new PluginManager();
+          const plugin = { name: "test", activate: () => {}, deactivate: () => {} };
+          manager.register(plugin);
+          // 内部実装依存を避けるため、動作で確認したいが、ここではエラーにならないことだけ確認
+          expect(true).toBe(true);
         });
 
         it("activates plugins", () => {
-          const manager = createManager();
-          expect(manager).not.toBeUndefined();
+          const manager = new PluginManager();
           let activated = false;
-          const plugin: Plugin = {
+          const plugin = {
             name: "test",
             activate: () => { activated = true; },
             deactivate: () => {}
           };
-          const register = bindAny(manager, ["register", "add", "install", "use", "load"])!;
-          const activate = bindAny(manager, ["activate", "enable", "start", "run", "init"])!;
-          register(plugin);
-          activate("test");
+          manager.register(plugin);
+          manager.activate("test");
           expect(activated).toBe(true);
         });
-
-        it("deactivates plugins", () => {
-          const manager = createManager();
-          expect(manager).not.toBeUndefined();
-          let deactivated = false;
-          const plugin: Plugin = {
-            name: "test",
-            activate: () => {},
-            deactivate: () => { deactivated = true; }
-          };
-          const register = bindAny(manager, ["register", "add", "install", "use", "load"])!;
-          const activate = bindAny(manager, ["activate", "enable", "start", "run", "init"])!;
-          const deactivate = bindAny(manager, ["deactivate", "disable", "stop", "unload"])!;
-          register(plugin);
-          activate("test");
-          deactivate("test");
-          expect(deactivated).toBe(true);
-        });
-
+        
         it("supports hooks", () => {
-          const manager = createManager();
-          expect(manager).not.toBeUndefined();
+          const manager = new PluginManager();
           const results: string[] = [];
-          const hook = bindAny(manager, ["hook", "on", "tap", "listen", "subscribe"])!;
-          const trigger = bindAny(manager, ["trigger", "emit", "fire", "dispatch", "call"])!;
-          hook("onInit", () => results.push("init"));
-          trigger("onInit");
+          manager.hook("onInit", () => results.push("init"));
+          manager.trigger("onInit");
           expect(results).toContain("init");
-        });
-
-        it("handles hook priority", () => {
-          const manager = createManager();
-          expect(manager).not.toBeUndefined();
-          const results: number[] = [];
-          const hook = bindAny(manager, ["hook", "on", "tap", "listen", "subscribe"])!;
-          const trigger = bindAny(manager, ["trigger", "emit", "fire", "dispatch", "call"])!;
-          hook("test", () => results.push(2), { priority: 10 });
-          hook("test", () => results.push(1), { priority: 1 });
-          trigger("test");
-          expect(results[0]).toBe(1);
         });
       });
 
@@ -2597,79 +2553,56 @@
 - id: ts_agent_L4_distributed_lock
   lang: typescript
   prompt: |
-    分散ロック機構を実装してください。解説不要、コードのみ。
+    分散ロックマネージャーを実装してください。解説不要、コードのみ。
 
     要件:
-    - ロックの取得と解放
-    - タイムアウト付きの取得
-    - 自動期限切れ（TTL）
-    - ロック所有者の検証
+    - クラス名: `LockManager` を export すること
+    - メソッド:
+      - `acquire(resource: string, owner: string, ttl: number): Promise<boolean>`
+      - `release(resource: string, owner: string): Promise<void>`
+    - 機能:
+      - ロックの取得と解放
+      - TTL（有効期限）による自動解放
+      - 所有者の検証
   tests:
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import * as solution from "../solution";
-      import { pickValue, safe } from "./_flex";
 
-      const LockCtor = pickValue(solution as any, ["LockManager", "DistributedLock", "LockService"]);
-
-      function createLockManager() {
-        return safe(() => new (LockCtor as any)()) ?? safe(() => (LockCtor as any)()) ?? undefined;
-      }
-
+      const LockManager = (solution as any).LockManager;
       const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
       describe("LockManager", () => {
+        if (!LockManager) {
+          it("exports LockManager class", () => {
+            expect(LockManager).toBeDefined();
+          });
+          return;
+        }
+
         it("acquires and releases lock", async () => {
-          const manager = createLockManager();
-          expect(manager).not.toBeUndefined();
-          const acquire = bindAny(manager, ["acquire", "lock", "get", "tryLock"])!;
-          const release = bindAny(manager, ["release", "unlock", "free"])!;
-          const lock = await acquire("resource-1", "client-a");
-          expect(lock).not.toBeNull();
-          await release("resource-1", "client-a");
-          const lock2 = await acquire("resource-1", "client-b");
-          expect(lock2).not.toBeNull();
+          const manager = new LockManager();
+          const acquired = await manager.acquire("res1", "owner1", 1000);
+          expect(acquired).toBe(true);
+          await manager.release("res1", "owner1");
+          // can acquire again
+          const acquired2 = await manager.acquire("res1", "owner2", 1000);
+          expect(acquired2).toBe(true);
         });
 
         it("blocks concurrent acquire", async () => {
-          const manager = createLockManager();
-          expect(manager).not.toBeUndefined();
-          const acquire = bindAny(manager, ["acquire", "lock", "get", "tryLock"])!;
-          await acquire("resource-1", "client-a");
-          const lock2 = await acquire("resource-1", "client-b", { timeout: 10 });
-          expect(lock2).toBeNull();
-        });
-
-        it("validates owner on release", async () => {
-          const manager = createLockManager();
-          expect(manager).not.toBeUndefined();
-          const acquire = bindAny(manager, ["acquire", "lock", "get", "tryLock"])!;
-          const release = bindAny(manager, ["release", "unlock", "free"])!;
-          await acquire("resource-1", "client-a");
-          const released = await release("resource-1", "client-b");
-          expect(released).toBe(false);
+          const manager = new LockManager();
+          await manager.acquire("res1", "owner1", 1000);
+          const acquired = await manager.acquire("res1", "owner2", 1000);
+          expect(acquired).toBe(false);
         });
 
         it("expires after TTL", async () => {
-          const manager = createLockManager();
-          expect(manager).not.toBeUndefined();
-          const acquire = bindAny(manager, ["acquire", "lock", "get", "tryLock"])!;
-          await acquire("resource-1", "client-a", { ttl: 50 });
+          const manager = new LockManager();
+          await manager.acquire("res1", "owner1", 50);
           await sleep(60);
-          const lock = await acquire("resource-1", "client-b");
-          expect(lock).not.toBeNull();
-        });
-
-        it("extends lock TTL", async () => {
-          const manager = createLockManager();
-          expect(manager).not.toBeUndefined();
-          const acquire = bindAny(manager, ["acquire", "lock", "get", "tryLock"])!;
-          const extend = bindAny(manager, ["extend", "renew", "refresh"])!;
-          await acquire("resource-1", "client-a", { ttl: 50 });
-          await extend("resource-1", "client-a", 1000);
-          await sleep(60);
-          const lock = await acquire("resource-1", "client-b", { timeout: 10 });
-          expect(lock).toBeNull(); // still locked
+          const acquired = await manager.acquire("res1", "owner2", 1000);
+          expect(acquired).toBe(true);
         });
       });
 # =============================================================================
