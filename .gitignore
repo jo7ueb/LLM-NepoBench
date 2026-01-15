@@ -3,3 +3,4 @@ config.json
 *.csv
 _work
 
+__pycache__
