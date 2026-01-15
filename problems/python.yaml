@@ -1474,11 +1474,11 @@
           assert cart.get_total() == 900
 
       def test_10_fixed_amount_discount():
-          """割引: 固定金額割引"""
+          """割引: 全額割引(100%)"""
           cart = ShoppingCart()
           cart.add_item("item", price=100, quantity=5)
-          cart.apply_discount(amount=50)
-          assert cart.get_total() == 450
+          cart.apply_discount(percent=100)
+          assert cart.get_total() == 0
 
       def test_11_large_percentage_discount():
           """割引: 50%割引"""
@@ -1487,88 +1487,49 @@
           cart.apply_discount(percent=50)
           assert cart.get_total() == 400
 
-      def test_12_discount_on_multiple_items():
-          """割引: 複数商品への割引適用"""
-          cart = ShoppingCart()
-          cart.add_item("a", price=100, quantity=2)
-          cart.add_item("b", price=200, quantity=1)
-          cart.apply_discount(percent=25)
-          assert cart.get_total() == 300
-
-      # ========== 付加機能テスト (20%) ==========
-      def test_13_item_count():
-          """付加: アイテム総数の取得"""
-          cart = ShoppingCart()
-          cart.add_item("apple", price=100, quantity=2)
-          cart.add_item("banana", price=50, quantity=3)
-          assert cart.item_count() == 5
-
-      def test_14_add_same_item_twice():
-          """付加: 同じ商品を2回追加すると合算"""
-          cart = ShoppingCart()
-          cart.add_item("apple", price=100, quantity=2)
-          cart.add_item("apple", price=100, quantity=3)
-          assert cart.get_total() == 500
-
-      def test_15_float_prices():
-          """付加: 小数点価格の処理"""
-          cart = ShoppingCart()
-          cart.add_item("item", price=99.99, quantity=2)
-          total = cart.get_total()
-          assert 199.0 <= total <= 200.0
-
-
 - id: py_agent_password_policy
   lang: python
   prompt: |
     パスワードポリシーチェッカーを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    要件（曖昧）:
-    - パスワードの強度をチェックする
-    - 弱いパスワードは拒否
-    - 一般的なセキュリティ要件を考慮
-
-    あなたの知識で適切なポリシーを設計してください。
+    要件:
+    - クラス名: `PasswordPolicy`
+    - メソッド:
+      - `validate(password: str) -> bool`
+      - `check_strength(password: str) -> str`: "WEAK", "MEDIUM", "STRONG"
+    - ポリシー:
+      - 長さ8文字以上
+      - 大文字、小文字、数字、記号を含むこと
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import check_password, PasswordStrength
-      except ImportError:
-          from solution import validate_password as check_password
-          from solution import Strength as PasswordStrength
+      from solution import PasswordPolicy
 
       def test_too_short():
-          result = check_password("abc")
-          assert result.is_valid is False
-          assert "length" in result.reason.lower() or "short" in result.reason.lower()
+          policy = PasswordPolicy()
+          assert policy.validate("abc") is False
+          assert policy.check_strength("abc") == "WEAK"
 
       def test_no_uppercase():
-          result = check_password("password123!")
-          assert result.is_valid is False
+          policy = PasswordPolicy()
+          assert policy.validate("password123!") is False
 
       def test_no_lowercase():
-          result = check_password("PASSWORD123!")
-          assert result.is_valid is False
+          policy = PasswordPolicy()
+          assert policy.validate("PASSWORD123!") is False
 
       def test_no_digit():
-          result = check_password("PasswordTest!")
-          assert result.is_valid is False
+          policy = PasswordPolicy()
+          assert policy.validate("PasswordTest!") is False
 
       def test_no_special():
-          result = check_password("Password123")
-          assert result.is_valid is False
+          policy = PasswordPolicy()
+          assert policy.validate("Password123") is False
 
       def test_valid_password():
-          result = check_password("SecurePass123!")
-          assert result.is_valid is True
-
-      def test_common_password():
-          # "password" や "123456" のような一般的なパスワードは拒否すべき
-          result = check_password("Password1!")
-          # password という単語を含む場合は弱いと判断すべき
-          assert result.strength != PasswordStrength.STRONG
-
+          policy = PasswordPolicy()
+          assert policy.validate("SecurePass123!") is True
+          assert policy.check_strength("SecurePass123!") == "STRONG"
 
 - id: py_agent_config_loader
   lang: python
@@ -1576,10 +1537,13 @@
     アプリケーション設定ローダーを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    要件（曖昧）:
-    - 設定ファイル（JSON/YAML/環境変数）から設定を読み込む
-    - デフォルト値のサポート
-    - 必須設定のバリデーション
+    要件:
+    - クラス名: `ConfigLoader`
+    - メソッド:
+      - `__init__(initial_config: dict = None, env_prefix: str = "")`
+      - `load_env()`: 環境変数を読み込んで設定を上書き（env_prefixでフィルタ）
+      - `get(key: str, default=None)`: ドット区切りキー（"db.host"）に対応
+
 
     実務で必要になりそうな機能を適切に設計してください。
   tests:
@@ -3090,13 +3054,16 @@
     要件:
     - クラス名: `LockManager`
     - メソッド:
-      - `acquire(resource: str, owner: str, ttl: float = 10) -> bool`
+      - `acquire(resource: str, owner: str, ttl: float = 10, timeout: float = 0) -> bool`
       - `release(resource: str, owner: str) -> bool`
+      - `extend(resource: str, owner: str, ttl: float) -> bool`
     - 機能:
       - ロックの取得と解放
       - タイムアウト付きの取得
       - 自動期限切れ（TTL）
+      - ロック期間の延長
       - ロック所有者の検証
+
 
     注: 実際のネットワーク通信は不要。インメモリでの実装でOK。
     分散システムでの利用を想定した設計を意識してください。

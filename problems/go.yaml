@@ -324,11 +324,17 @@
 - id: go_stack
   lang: go
   prompt: |
-    スタック(LIFO)を実装。解説不要。solution.go。package bench。
+    スタック(LIFO)を実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - type Stack[T any] struct {...}
-    - Push(T), Pop() (T, bool), Peek() (T, bool), Len() int, IsEmpty() bool
+    - 構造体: `Stack[T any]`
+    - メソッド:
+      - `(s *Stack[T]) Push(v T)`
+      - `(s *Stack[T]) Pop() (T, bool)`
+      - `(s *Stack[T]) Peek() (T, bool)`
+      - `(s *Stack[T]) Len() int`
+      - `(s *Stack[T]) IsEmpty() bool`
   tests:
     solution_test.go: |
       package bench
@@ -376,11 +382,18 @@
 - id: go_queue
   lang: go
   prompt: |
-    キュー(FIFO)を実装。解説不要。solution.go。package bench。
+    キュー(FIFO)を実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - type Queue[T any] struct {...}
-    - Enqueue(T), Dequeue() (T, bool), Peek() (T, bool), Len() int, IsEmpty() bool
+    - 構造体: `Queue[T any]`
+    - メソッド:
+      - `(q *Queue[T]) Enqueue(v T)`
+      - `(q *Queue[T]) Dequeue() (T, bool)`
+      - `(q *Queue[T]) Peek() (T, bool)`
+      - `(q *Queue[T]) Len() int`
+      - `(q *Queue[T]) IsEmpty() bool`
+
   tests:
     solution_test.go: |
       package bench

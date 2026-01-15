@@ -100,7 +100,25 @@ def extract_code(text: str) -> str:
 
 def reset_workdir() -> None:
     if os.path.exists(WORKDIR):
-        shutil.rmtree(WORKDIR)
+        try:
+            shutil.rmtree(WORKDIR)
+        except PermissionError:
+            print("PermissionError detected. Attempting to clean up using Docker...")
+            try:
+                subprocess.run(
+                    [
+                        "docker", "run", "--rm",
+                        "-v", f"{os.path.abspath(WORKDIR)}:/clean_target",
+                        "alpine",
+                        "sh", "-c", "rm -rf /clean_target/*"
+                    ],
+                    check=True,
+                    capture_output=True
+                )
+                shutil.rmtree(WORKDIR)
+            except Exception as e:
+                print(f"Warning: Failed to clean up {WORKDIR} using Docker: {e}")
+                raise
     os.makedirs(WORKDIR, exist_ok=True)
 
 

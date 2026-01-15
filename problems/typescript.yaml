@@ -17,7 +17,7 @@
 - id: ts_typesafety
   lang: typescript
   prompt: |
-    TypeScriptで型安全にリファクタしてください。解説不要、コードのみ。
+    TypeScriptで型安全にリファクタしてください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     エクスポート:
     - export type User = { name: string; age: number }
@@ -74,7 +74,7 @@
 - id: ts_type_guard
   lang: typescript
   prompt: |
-    TypeScriptで型ガード関数を実装してください。解説不要、コードのみ。
+    TypeScriptで型ガード関数を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - isString(value: unknown): value is string
@@ -134,7 +134,7 @@
 - id: ts_generic_function
   lang: typescript
   prompt: |
-    ジェネリック関数を実装してください。解説不要、コードのみ。
+    ジェネリック関数を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - first<T>(arr: T[]): T | undefined - 配列の最初の要素を返す
@@ -267,7 +267,7 @@
 - id: ts_promise_retry
   lang: typescript
   prompt: |
-    リトライ機能付きの関数を実装してください。解説不要、コードのみ。
+    リトライ機能付きの関数を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - retry<T>(fn: () => Promise<T>, maxAttempts: number): Promise<T>
@@ -314,7 +314,7 @@
 - id: ts_promise_all_settled
   lang: typescript
   prompt: |
-    Promise.allSettledのようなユーティリティを実装してください。解説不要、コードのみ。
+    Promise.allSettledのようなユーティリティを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - settleAll<T>(promises: Promise<T>[]): Promise<SettledResult<T>[]>
@@ -371,7 +371,7 @@
 - id: ts_array_utils
   lang: typescript
   prompt: |
-    配列ユーティリティ関数を実装してください。解説不要、コードのみ。
+    配列ユーティリティ関数を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - chunk<T>(arr: T[], size: number): T[][] - 配列をsize個ずつに分割
@@ -436,7 +436,7 @@
 - id: ts_object_utils
   lang: typescript
   prompt: |
-    オブジェクトユーティリティ関数を実装してください。解説不要、コードのみ。
+    オブジェクトユーティリティ関数を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>
@@ -497,7 +497,7 @@
 - id: ts_event_emitter
   lang: typescript
   prompt: |
-    イベントエミッターを実装してください。解説不要、コードのみ。
+    イベントエミッターを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - class EventEmitter<Events extends Record<string, any>>
@@ -566,7 +566,7 @@
 - id: ts_result_type
   lang: typescript
   prompt: |
-    Result型（RustのResult相当）を実装してください。解説不要、コードのみ。
+    Result型（RustのResult相当）を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     仕様:
     - type Result<T, E> = Ok<T> | Err<E>
@@ -623,7 +623,7 @@
 - id: ts_closure_loop_bug
   lang: typescript
   prompt: |
-    次のコードにはクロージャとループのバグがあります。修正してください。解説不要、コードのみ。
+    次のコードにはクロージャとループのバグがあります。修正してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     問題: すべてのコールバックが同じ値を出力してしまう
 
@@ -683,7 +683,7 @@
 - id: ts_agent_L1_storage
   lang: typescript
   prompt: |
-    シンプルなKey-Valueストレージを実装してください。解説不要、コードのみ。
+    シンプルなKey-Valueストレージを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     エクスポート:
     - export class Storage
@@ -760,7 +760,7 @@
 - id: ts_agent_L1_validator
   lang: typescript
   prompt: |
-    シンプルなバリデーターを実装してください。解説不要、コードのみ。
+    シンプルなバリデーターを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - 文字列、数値、メールアドレスのバリデーション
@@ -905,7 +905,7 @@
 - id: ts_agent_L1_formatter
   lang: typescript
   prompt: |
-    データフォーマッターを実装してください。解説不要、コードのみ。
+    データフォーマッターを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - 日付のフォーマット（例: "2024-01-15"）
@@ -988,7 +988,7 @@
 - id: ts_agent_L1_queue
   lang: typescript
   prompt: |
-    シンプルなキュー（FIFO）を実装してください。解説不要、コードのみ。
+    シンプルなキュー（FIFO）を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - エンキュー、デキュー、ピーク
@@ -1056,7 +1056,7 @@
 - id: ts_agent_L1_logger
   lang: typescript
   prompt: |
-    シンプルなロガーを実装してください。解説不要、コードのみ。
+    シンプルなロガーを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - ログレベル（DEBUG, INFO, WARN, ERROR）
@@ -1136,7 +1136,7 @@
 - id: ts_agent_L2_http_client
   lang: typescript
   prompt: |
-    HTTPクライアントのラッパーを実装してください。解説不要、コードのみ。
+    HTTPクライアントのラッパーを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - リトライ機能
@@ -1226,7 +1226,7 @@
 - id: ts_agent_L2_state_manager
   lang: typescript
   prompt: |
-    シンプルな状態管理ライブラリを実装してください。解説不要、コードのみ。
+    シンプルな状態管理ライブラリを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `Store` を export すること
@@ -1291,7 +1291,7 @@
 - id: ts_agent_L2_router
   lang: typescript
   prompt: |
-    シンプルなURLルーターを実装してください。解説不要、コードのみ。
+    シンプルなURLルーターを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `Router` を export すること
@@ -1365,7 +1365,7 @@
 - id: ts_agent_L2_task_queue
   lang: typescript
   prompt: |
-    非同期タスクキューを実装してください。解説不要、コードのみ。
+    非同期タスクキューを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `TaskQueue` を export すること
@@ -1426,7 +1426,7 @@
 - id: ts_agent_L2_cache
   lang: typescript
   prompt: |
-    LRUキャッシュを実装してください。解説不要、コードのみ。
+    LRUキャッシュを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `LRUCache` を export すること
@@ -1499,7 +1499,7 @@
 - id: ts_agent_L2_schema_validator
   lang: typescript
   prompt: |
-    JSONスキーマバリデーターを実装してください。解説不要、コードのみ。
+    JSONスキーマバリデーターを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - オブジェクトスキーマの定義
@@ -1645,7 +1645,7 @@
 - id: ts_agent_L3_dependency_injection
   lang: typescript
   prompt: |
-    依存性注入（DI）コンテナを実装してください。解説不要、コードのみ。
+    依存性注入（DI）コンテナを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - サービスの登録と解決
@@ -1721,7 +1721,7 @@
 - id: ts_agent_L3_state_machine
   lang: typescript
   prompt: |
-    型安全な有限状態マシン（FSM）を実装してください。解説不要、コードのみ。
+    型安全な有限状態マシン（FSM）を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - 状態と遷移の定義
@@ -1814,7 +1814,7 @@
 - id: ts_agent_L3_query_builder
   lang: typescript
   prompt: |
-    型安全なSQLクエリビルダーを実装してください。解説不要、コードのみ。
+    型安全なSQLクエリビルダーを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - SELECT, WHERE, JOIN, ORDER BY をサポート
@@ -1887,7 +1887,7 @@
 - id: ts_agent_L3_event_sourcing
   lang: typescript
   prompt: |
-    イベントソーシングシステムを実装してください。解説不要、コードのみ。
+    イベントソーシングシステムを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - イベントの記録
@@ -1955,7 +1955,7 @@
 - id: ts_agent_L3_circuit_breaker
   lang: typescript
   prompt: |
-    サーキットブレーカーパターンを実装してください。解説不要、コードのみ。
+    サーキットブレーカーパターンを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `CircuitBreaker` を export すること
@@ -2037,7 +2037,7 @@
 - id: ts_agent_L3_plugin_system
   lang: typescript
   prompt: |
-    型安全なプラグインシステムを実装してください。解説不要、コードのみ。
+    型安全なプラグインシステムを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `PluginManager` を export
@@ -2105,7 +2105,7 @@
 - id: ts_agent_L4_workflow_engine
   lang: typescript
   prompt: |
-    ワークフローエンジンを実装してください。解説不要、コードのみ。
+    ワークフローエンジンを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - タスクの定義と依存関係
@@ -2192,7 +2192,7 @@
 - id: ts_agent_L4_rule_engine
   lang: typescript
   prompt: |
-    ビジネスルールエンジンを実装してください。解説不要、コードのみ。
+    ビジネスルールエンジンを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - ルールの定義（条件 + アクション）
@@ -2289,7 +2289,7 @@
 - id: ts_agent_L4_saga_pattern
   lang: typescript
   prompt: |
-    Sagaパターン（分散トランザクション）を実装してください。解説不要、コードのみ。
+    Sagaパターン（分散トランザクション）を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - 複数ステップのトランザクション
@@ -2380,7 +2380,7 @@
 - id: ts_agent_L4_api_gateway
   lang: typescript
   prompt: |
-    APIゲートウェイを実装してください。解説不要、コードのみ。
+    APIゲートウェイを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - ルートベースのリクエストルーティング
@@ -2391,7 +2391,7 @@
     tests/solution.test.ts: |
       import { describe, it, expect } from "vitest";
       import * as solution from "../solution";
-      import { pickValue, safe } from "./_flex";
+      import { pickValue, safe, bindAny } from "./_flex";
 
       type Request = any;
       type Response = any;
@@ -2470,7 +2470,7 @@
 - id: ts_agent_L4_cqrs
   lang: typescript
   prompt: |
-    CQRS（Command Query Responsibility Segregation）を実装してください。解説不要、コードのみ。
+    CQRS（Command Query Responsibility Segregation）を実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - コマンドハンドラ（書き込み）
@@ -2553,7 +2553,7 @@
 - id: ts_agent_L4_distributed_lock
   lang: typescript
   prompt: |
-    分散ロックマネージャーを実装してください。解説不要、コードのみ。
+    分散ロックマネージャーを実装してください。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
 
     要件:
     - クラス名: `LockManager` を export すること
@@ -2612,7 +2612,7 @@
 - id: ts_conditional_types
   lang: typescript
   prompt: |
-    Conditional Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    Conditional Typesを使った型ユーティリティを実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - Flatten<T> - 配列なら要素型、そうでなければT
     - MyNonNullable<T> - nullとundefinedを除去（自作）
     - ReturnTypeOf<T> - 関数の戻り値型を取得（自作）
@@ -2645,7 +2645,7 @@
 - id: ts_mapped_types
   lang: typescript
   prompt: |
-    Mapped Typesを使った型ユーティリティを実装。解説不要、コードのみ。
+    Mapped Typesを使った型ユーティリティを実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - MyReadonly<T> - 全プロパティをreadonly（自作）
     - MyPartial<T> - 全プロパティをoptional（自作）
     - MyRequired<T> - 全プロパティを必須（自作）
@@ -2685,7 +2685,7 @@
 - id: ts_template_literal
   lang: typescript
   prompt: |
-    Template Literal Typesを使った型を実装。解説不要、コードのみ。
+    Template Literal Typesを使った型を実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - EventName<T> - "on" + Capitalize<T> (例: "click" → "onClick")
     - toEventName(event: string): string
     - PathParams<T> - URLパスからパラメータ抽出
@@ -2718,7 +2718,7 @@
 - id: ts_discriminated_union
   lang: typescript
   prompt: |
-    Discriminated Unionを使ったパターンマッチングを実装。解説不要、コードのみ。
+    Discriminated Unionを使ったパターンマッチングを実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - type Action = { type: "INCREMENT" } | { type: "DECREMENT" } | { type: "SET"; value: number }
     - reducer(state: number, action: Action): number
     - increment(), decrement(), set(value) アクションクリエーター
@@ -2753,7 +2753,7 @@
 - id: ts_react_hooks
   lang: typescript
   prompt: |
-    React風のカスタムフックを実装（Reactなし）。解説不要、コードのみ。
+    React風のカスタムフックを実装（Reactなし）。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - useState<T>(initial: T): [T, (v: T | ((prev: T) => T)) => void]
     - useMemo<T>(factory: () => T, deps: any[]): T
     - resetHooks(): void
@@ -2793,7 +2793,7 @@
 - id: ts_express_middleware
   lang: typescript
   prompt: |
-    Express風のミドルウェアシステムを実装。解説不要、コードのみ。
+    Express風のミドルウェアシステムを実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - createApp() でアプリ作成
     - app.use(middleware), app.get(path, handler), app.post(path, handler)
     - app.handle(req) でリクエスト処理
@@ -2831,7 +2831,7 @@
 - id: ts_validation_schema
   lang: typescript
   prompt: |
-    Zod風のバリデーションスキーマを実装。解説不要、コードのみ。
+    Zod風のバリデーションスキーマを実装。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     - z.string(), z.number(), z.boolean()
     - z.object({...}), z.array(schema)
     - .optional(), .parse(data)
@@ -2868,7 +2868,7 @@
 - id: ts_this_binding_bug
   lang: typescript
   prompt: |
-    thisバインディングバグを修正。解説不要、コードのみ。
+    thisバインディングバグを修正。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     問題: クラスメソッドをコールバックとして渡すとthisが失われる
     class Counter { count = 0; increment() { this.count++; } getCount() { return this.count; } }
   tests:
@@ -2904,7 +2904,7 @@
 - id: ts_equality_bug
   lang: typescript
   prompt: |
-    等価性チェックのバグを修正。解説不要、コードのみ。
+    等価性チェックのバグを修正。解説不要、コードのみ。標準ライブラリのみを使用してください。外部ライブラリ（Anthropic SDKなど）は使用禁止です。
     問題: オブジェクトの等価性を正しく比較できない
     元コード: function isEqual(a: any, b: any) { return a == b; }
     期待: 深い比較で正しく判定
