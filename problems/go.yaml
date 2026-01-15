@@ -486,11 +486,20 @@
 - id: go_agent_L1_worker
   lang: go
   prompt: |
-    ワーカープールを実装。解説不要。solution.go。package bench。
+    ワーカープールを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
-    要件を推測して実装してください:
-    - 複数のgoroutineでジョブを処理
-    - ジョブの追加と結果の取得
+    要件:
+    - 構造体: `WorkerPool`
+    - メソッド:
+        - `NewWorkerPool(numWorkers int) *WorkerPool`
+        - `(wp *WorkerPool) Start()`
+        - `(wp *WorkerPool) Submit(job int)`
+        - `(wp *WorkerPool) Stop()`
+        - `(wp *WorkerPool) Results(expected int) []int`: 結果を収集して返す
+    - 機能:
+        - 複数のgoroutineでジョブを並列処理
+        - ジョブは整数値、処理は二乗計算とする (input * input)
   tests:
     solution_test.go: |
       package bench
@@ -523,11 +532,15 @@
 - id: go_agent_L1_timeout
   lang: go
   prompt: |
-    タイムアウト付き処理を実装。解説不要。solution.go。package bench。
+    タイムアウト付き処理を実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - DoWithTimeout(fn func() (string, error), timeout time.Duration) (string, error)
-    - タイムアウト時は適切なエラーを返す
+    - 関数: `DoWithTimeout(fn func() (string, error), timeout time.Duration) (string, error)`
+    - 機能:
+        - `fn` を実行し、結果を返す
+        - `timeout` 時間内に終了しない場合、エラーを返す
+        - `fn` が完了した場合、その結果とエラーを返す
   tests:
     solution_test.go: |
       package bench
@@ -573,11 +586,18 @@
 - id: go_agent_L1_cache
   lang: go
   prompt: |
-    スレッドセーフなキャッシュを実装。解説不要。solution.go。package bench。
+    スレッドセーフなキャッシュを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - Get/Set/Delete
-    - 並行アクセスに対応
+    - 構造体: `Cache[K comparable, V any]` (ジェネリクスを使用)
+    - メソッド:
+        - `NewCache[K comparable, V any]() *Cache[K, V]`
+        - `(c *Cache[K, V]) Set(key K, value V)`
+        - `(c *Cache[K, V]) Get(key K) (V, bool)`
+        - `(c *Cache[K, V]) Delete(key K)`
+    - 機能:
+        - `sync.RWMutex` 等を使用して並行アクセスを安全にする
   tests:
     solution_test.go: |
       package bench
@@ -623,11 +643,16 @@
 - id: go_agent_L1_rate_limiter
   lang: go
   prompt: |
-    レートリミッターを実装。解説不要。solution.go。package bench。
+    レートリミッターを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - 1秒あたりの許可リクエスト数を制限
-    - Allow() bool でリクエスト許可を判定
+    - 構造体: `RateLimiter`
+    - メソッド:
+        - `NewRateLimiter(limit int, interval time.Duration) *RateLimiter`
+        - `(rl *RateLimiter) Allow() bool`
+    - 機能:
+        - 指定された `interval` 内に `limit` 回までのリクエストを許可
   tests:
     solution_test.go: |
       package bench
@@ -662,12 +687,15 @@
 - id: go_agent_L2_context_cancel
   lang: go
   prompt: |
-    context.Contextを使ったキャンセレーションを実装。解説不要。solution.go。package bench。
+    context.Contextを使ったキャンセレーションを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - LongTask(ctx context.Context) (string, error)
-    - contextがキャンセルされたら即座に終了
-    - 正常終了なら "completed" を返す
+    - 関数: `LongTask(ctx context.Context) (string, error)`
+    - 機能:
+        - 何らかの重い処理（シミュレーション）を行う
+        - `ctx.Done()` が閉じられたら即座にエラーを返して終了する
+        - 正常終了時は "completed" を返す
   tests:
     solution_test.go: |
       package bench
@@ -702,12 +730,15 @@
 - id: go_agent_L2_retry
   lang: go
   prompt: |
-    リトライ機能を実装。解説不要。solution.go。package bench。
+    リトライ機能を実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - Retry(fn func() error, maxAttempts int, delay time.Duration) error
-    - 指数バックオフ
-    - 最大リトライ回数を超えたら最後のエラーを返す
+    - 関数: `Retry(fn func() error, maxAttempts int, delay time.Duration) error`
+    - 機能:
+        - `fn` がエラーを返した場合、`delay` 待機して再試行する
+        - `maxAttempts` 回試行しても失敗した場合は最後のエラーを返す
+        - 指数バックオフ（exponential backoff）を実装すること
   tests:
     solution_test.go: |
       package bench
@@ -754,12 +785,21 @@
 - id: go_agent_L2_semaphore
   lang: go
   prompt: |
-    セマフォを実装。解説不要。solution.go。package bench。
+    セマフォを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - 同時実行数を制限
-    - Acquire() / Release()
-    - TryAcquire() bool
+    - 構造体: `Semaphore`
+    - メソッド:
+        - `NewSemaphore(max int) *Semaphore`
+        - `(s *Semaphore) Acquire()`
+        - `(s *Semaphore) Release()`
+        - `(s *Semaphore) TryAcquire() bool`
+    - 機能:
+        - 同時実行数を `max` に制限する
+        - `Acquire` は空きが出るまでブロック
+        - `TryAcquire` はブロックせずに成功可否を返す
+
   tests:
     solution_test.go: |
       package bench
@@ -817,13 +857,20 @@
 - id: go_agent_L2_pubsub
   lang: go
   prompt: |
-    Pub/Subシステムを実装。解説不要。solution.go。package bench。
+    Pub/Subシステムを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - Subscribe(topic string) <-chan string
-    - Publish(topic string, msg string)
-    - Unsubscribe
-    - スレッドセーフ
+    - 構造体: `PubSub`
+    - メソッド:
+        - `NewPubSub() *PubSub`
+        - `(ps *PubSub) Subscribe(topic string) <-chan string`
+        - `(ps *PubSub) Publish(topic string, msg string)`
+        - `(ps *PubSub) Close()`
+    - 機能:
+        - トピックごとの配信
+        - 複数のサブスクライバへのブロードキャスト
+        - スレッドセーフ
   tests:
     solution_test.go: |
       package bench
@@ -878,13 +925,20 @@
 - id: go_agent_L3_circuit_breaker
   lang: go
   prompt: |
-    サーキットブレーカーを実装。解説不要。solution.go。package bench。
+    サーキットブレーカーを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - CLOSED/OPEN/HALF_OPEN状態
-    - 連続失敗でOPEN
-    - タイムアウト後HALF_OPEN
-    - 成功でCLOSED
+    - 構造体: `CircuitBreaker`
+    - 定数/変数: `StateClosed`, `StateOpen`, `StateHalfOpen`
+    - メソッド:
+        - `NewCircuitBreaker(threshold int, timeout time.Duration) *CircuitBreaker`
+        - `(cb *CircuitBreaker) Call(fn func() error) error`
+        - `(cb *CircuitBreaker) State() StateType` (戻り値の型は定数と一致)
+    - 機能:
+        - 連続失敗でOpen
+        - タイムアウト後Half-Open
+        - 成功でClosed
   tests:
     solution_test.go: |
       package bench
@@ -938,13 +992,19 @@
 - id: go_agent_L3_pool
   lang: go
   prompt: |
-    コネクションプールを実装。解説不要。solution.go。package bench。
+    コネクションプールを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - 最大接続数の制限
-    - Get() でコネクション取得
-    - Put() で返却
-    - タイムアウト付きGet
+    - 構造体: `Pool`
+    - メソッド:
+        - `NewPool(max int) *Pool`
+        - `(p *Pool) Get(ctx context.Context) (interface{}, error)`
+        - `(p *Pool) Put(item interface{})`
+    - 機能:
+        - 最大接続数の制限
+        - `Get` でコネクション取得（空きがなければブロック、タイムアウト対応）
+        - `Put` で返却
   tests:
     solution_test.go: |
       package bench
@@ -997,12 +1057,21 @@
 - id: go_agent_L3_state_machine
   lang: go
   prompt: |
-    状態マシンを実装。解説不要。solution.go。package bench。
+    状態マシンを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - 状態と遷移の定義
-    - 無効な遷移の検出
-    - コールバック
+    - 構造体: `StateMachine`
+    - メソッド:
+        - `NewStateMachine(initial string) *StateMachine`
+        - `(sm *StateMachine) AddTransition(from, to, event string)`
+        - `(sm *StateMachine) Fire(event string) error`
+        - `(sm *StateMachine) State() string`
+        - `(sm *StateMachine) OnEnter(state string, callback func())`
+    - 機能:
+        - 状態と遷移の定義
+        - 無効な遷移の検出
+        - コールバック
   tests:
     solution_test.go: |
       package bench
@@ -1055,13 +1124,20 @@
 - id: go_agent_L3_middleware
   lang: go
   prompt: |
-    ミドルウェアチェーンを実装。解説不要。solution.go。package bench。
+    ミドルウェアチェーンを実装してください。
+    解説不要。solution.go のコードのみ出力してください。package bench。
 
     要件:
-    - Handler func(ctx *Context) error
-    - Use(middleware) でミドルウェア追加
-    - 順序通りに実行
-    - next()で次を呼び出し
+    - 構造体: `Chain`, `Context`
+    - メソッド:
+        - `NewChain() *Chain`
+        - `(c *Chain) Use(middleware func(ctx *Context, next func() error) error)`
+        - `(c *Chain) Handle(handler func(ctx *Context) error)`
+        - `(c *Chain) Execute(ctx *Context) error`
+    - 機能:
+        - 複数のミドルウェアを適用してハンドラをラップする
+        - 順序通りに実行
+        - next()で次を呼び出し
   tests:
     solution_test.go: |
       package bench
