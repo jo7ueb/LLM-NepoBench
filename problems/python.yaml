@@ -852,18 +852,18 @@
     URLを短縮する簡単なサービスを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    エクスポート: class UrlShortener (shorten, restore メソッド)
-
     要件:
-    - 長いURLを短いIDに変換
-    - 短いIDから元のURLを復元
-    - インメモリで動作（永続化不要）
+    - クラス名: `UrlShortener`
+    - メソッド:
+      - `shorten(url: str) -> str`
+      - `restore(short_id: str) -> str`
+    - 機能:
+      - 長いURLを短いIDに変換
+      - 短いIDから元のURLを復元
+      - インメモリで動作（永続化不要）
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import UrlShortener
-      except ImportError:
-          from solution import URLShortener as UrlShortener
+      from solution import UrlShortener
 
       # ========== 基本機能テスト (40%) ==========
       def test_01_basic_shorten():
@@ -957,21 +957,19 @@
     シンプルなロガーを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    エクスポート:
-    - class LogLevel(Enum): DEBUG=0, INFO=1, WARN=2, ERROR=3
-    - class Logger(__init__(level), debug(), info(), warn(), error())
-
     要件:
-    - ログレベル（DEBUG, INFO, WARN, ERROR）をサポート
-    - 設定したレベル以上のログのみ出力
-    - タイムスタンプ付き
+    - クラス名: `Logger`
+    - 列挙型: `LogLevel` (DEBUG=0, INFO=1, WARN=2, ERROR=3)
+    - メソッド:
+      - `__init__(level: LogLevel)`
+      - `debug(msg)`, `info(msg)`, `warn(msg)`, `error(msg)`
+    - 機能:
+      - ログレベル（DEBUG, INFO, WARN, ERROR）をサポート
+      - 設定したレベル以上のログのみ出力
+      - タイムスタンプ付き
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import Logger, LogLevel
-      except ImportError:
-          from solution import Logger
-          from solution import Level as LogLevel
+      from solution import Logger, LogLevel
 
       def test_info_log(capsys):
           logger = Logger(level=LogLevel.INFO)
@@ -979,6 +977,7 @@
           captured = capsys.readouterr()
           assert "test message" in captured.out
           assert "INFO" in captured.out
+
 
       def test_level_filtering(capsys):
           logger = Logger(level=LogLevel.WARN)
@@ -1012,15 +1011,16 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - 四則演算（+, -, *, /）をサポート
-    - カッコ対応
-    - 安全に実装（eval禁止）
+    - クラス名: `Calculator`
+    - メソッド:
+      - `evaluate(expression: str) -> float | int`
+    - 機能:
+      - 四則演算（+, -, *, /）をサポート
+      - カッコ対応
+      - 安全に実装（eval禁止）
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import Calculator
-      except ImportError:
-          from solution import Calc as Calculator
+      from solution import Calculator
 
       def test_simple_add():
           calc = Calculator()
@@ -1053,17 +1053,21 @@
     シンプルなToDoリスト管理クラスを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    基本要件:
-    - タスクの追加・削除・完了
-    - 一覧表示
-
-    「使いやすいAPI」を意識して設計してください。
+    要件:
+    - クラス名: `TodoList`
+    - メソッド:
+      - `add(title: str) -> str`: タスクIDを返す
+      - `complete(task_id: str) -> void`
+      - `delete(task_id: str) -> void`
+      - `list_all() -> list[dict]`
+      - `list_pending() -> list[dict]`
+      - `get(task_id: str) -> dict | None`
+    - 機能:
+      - タスクの追加・削除・完了
+      - 一覧表示
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import TodoList
-      except ImportError:
-          from solution import ToDoList as TodoList
+      from solution import TodoList
 
       def test_add_task():
           todo = TodoList()
@@ -1106,16 +1110,17 @@
     テキストの統計情報を計算するクラスを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    最低限の要件:
-    - 単語数、文字数、行数をカウント
-
-    他に有用な統計があれば追加してください。
+    要件:
+    - クラス名: `TextStats`
+    - メソッド:
+      - `__init__(text: str)`
+      - `word_count() -> int`
+      - `char_count() -> int`
+      - `line_count() -> int`
+      - `average_word_length() -> float`
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import TextStats
-      except ImportError:
-          from solution import text_stats as TextStats
+      from solution import TextStats
 
       def test_word_count():
           stats = TextStats("Hello world")
@@ -1151,9 +1156,16 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - 指定時間後にタスクを実行
-    - 定期実行（interval）
-    - タスクのキャンセル
+    - クラス名: `Scheduler`
+    - メソッド:
+      - `schedule(task: Callable, delay: float) -> str`: タスクIDを返す
+      - `schedule_interval(task: Callable, interval: float) -> str`: タスクIDを返す
+      - `cancel(task_id: str) -> void`
+      - `run_pending() -> void`: 実行すべきタスクを実行
+    - 機能:
+      - 指定時間後にタスクを実行
+      - 定期実行（interval）
+      - タスクのキャンセル
 
     実際の並行処理は不要。シミュレーションでOK。
   tests:
@@ -1205,17 +1217,18 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - 変数の置換 {{ name }}
-    - 条件分岐 {% if condition %}...{% endif %}
-    - ループ {% for item in items %}...{% endfor %}
+    - クラス名: `TemplateEngine`
+    - メソッド:
+      - `render(template: str, context: dict) -> str`
+    - 機能:
+      - 変数の置換 {{ name }}
+      - 条件分岐 {% if condition %}...{% endif %}
+      - ループ {% for item in items %}...{% endfor %}
 
     Jinja2のような本格的なものは不要。基本機能のみ。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import TemplateEngine
-      except ImportError:
-          from solution import Template as TemplateEngine
+      from solution import TemplateEngine
 
       def test_variable_substitution():
           engine = TemplateEngine()
@@ -1252,18 +1265,22 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - サブコマンドのサポート
-    - 位置引数とオプション引数
-    - ヘルプ生成
-    - バリデーション
+    - クラス名: `CommandParser`
+    - メソッド:
+      - `add_command(name: str, handler: Callable = None)`
+      - `add_subcommand(parent: str, name: str, handler: Callable)`
+      - `add_argument(command: str, name: str, required: bool = False, default = None)`
+      - `parse_and_execute(args: list[str]) -> Any`
+    - 機能:
+      - サブコマンドのサポート
+      - 位置引数とオプション引数
+      - ヘルプ生成
+      - バリデーション
 
     例: myapp user create --name Alice
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import CommandParser
-      except ImportError:
-          from solution import Parser as CommandParser
+      from solution import CommandParser
 
       def test_simple_command():
           parser = CommandParser()
@@ -1305,19 +1322,31 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - リトライ機能
-    - タイムアウト設定
-    - レスポンスのキャッシュ
-    - 共通ヘッダの設定
+    - クラス名: `HttpClient`
+    - メソッド:
+      - `__init__(transport=None, headers=None, retries=0, cache_ttl=0)`
+      - `get(url: str) -> Response` (Response object with status, body)
+    - 機能:
+      - リトライ機能
+      - タイムアウト設定
+      - レスポンスのキャッシュ
+      - 共通ヘッダの設定
 
     実際の通信は不要。インターフェースとロジックの実装のみ。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import HttpClient, MockTransport
-      except ImportError:
-          from solution import HttpClient
-          MockTransport = None
+      from solution import HttpClient
+
+      class MockTransport:
+          def __init__(self, responses):
+              self.responses = responses
+              self.last_request = None
+          def __call__(self, method, url, **kwargs):
+              self.last_request = {"method": method, "url": url, **kwargs}
+              key = f"{method} {url}"
+              if key in self.responses:
+                  return self.responses[key]
+              return {"status": 404, "body": {}}
 
       def test_get_request():
           transport = MockTransport({"GET /users": {"status": 200, "body": []}})
@@ -1364,18 +1393,22 @@
     ECサイトのショッピングカート機能を実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    要件（意図的に曖昧）:
-    - カートに商品を追加・削除できる
-    - 合計金額を計算できる
-    - 割引があればよしなに対応
+    要件:
+    - クラス名: `ShoppingCart`
+    - メソッド:
+      - `add_item(name: str, price: int, quantity: int = 1)`
+      - `remove_item(name: str, quantity: int = None)`: quantity=Noneなら全削除
+      - `get_total() -> int | float`
+      - `apply_discount(percent: int)`
+    - 機能:
+      - カートに商品を追加・削除できる
+      - 合計金額を計算できる
+      - 割引対応
 
     ヒント: 実務では要件が曖昧なことが多い。合理的な設計判断をして実装してください。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import ShoppingCart
-      except ImportError:
-          from solution import Cart as ShoppingCart
+      from solution import ShoppingCart
 
       # ========== 基本機能テスト (35%) ==========
       def test_01_empty_cart_total():
@@ -1847,17 +1880,18 @@
 - id: py_agent_rate_limiter
   lang: python
   prompt: |
-    APIレート制限を実装してください。
+    レートリミッターを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
-    基本要件:
-    - 指定された時間窓内のリクエスト数を制限
-    - クライアントIDごとに制限
-
-    考慮すべき点:
-    - 時間窓の扱い（スライディング/固定）
-    - 同時アクセス
-    - メモリ効率
+    要件:
+    - クラス名: `RateLimiter`
+    - メソッド:
+      - `__init__(max_requests: int, window_seconds: float)`
+      - `allow(client_id: str) -> bool`
+      - `remaining(client_id: str) -> int`
+    - 機能:
+      - クライアントごとの制限
+      - スライディングウィンドウまたは固定ウィンドウ
   tests:
     tests/test_solution.py: |
       import time
@@ -1903,11 +1937,14 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - ユーザーIDからトークンを生成
-    - トークンからユーザーIDを復元・検証
-    - 有効期限のサポート
-
-    セキュリティを意識した実装をしてください。
+    - クラス名: `TokenService`
+    - メソッド:
+      - `__init__(secret: str, default_ttl: float = 3600)`
+      - `generate(user_id: str) -> str`
+      - `verify(token: str) -> dict`: {"valid": bool, "user_id": str|None, "reason": str|None}
+    - 機能:
+      - HMAC署名による改ざん防止
+      - 有効期限チェック
   tests:
     tests/test_solution.py: |
       import time
@@ -1959,41 +1996,42 @@
 - id: py_agent_input_sanitizer
   lang: python
   prompt: |
-    ユーザー入力のサニタイズ機能を実装してください。
+    入力サニタイザーを実装してください。
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - HTML/SQLインジェクション対策
-    - XSS対策
-    - 危険な文字のエスケープ
+    - クラス名: `Sanitizer`
+    - メソッド:
+      - `sanitize_html(text: str) -> str`: HTMLタグを除去/エスケープ
+      - `sanitize_sql(text: str) -> str`: SQLインジェクション対策（簡易）
 
     セキュリティベストプラクティスに従ってください。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import sanitize_html, sanitize_sql, Sanitizer
-      except ImportError:
-          from solution import Sanitizer
-          sanitize_html = Sanitizer().sanitize_html if hasattr(Sanitizer(), 'sanitize_html') else lambda x: x
-          sanitize_sql = Sanitizer().sanitize_sql if hasattr(Sanitizer(), 'sanitize_sql') else lambda x: x
+      from solution import Sanitizer
 
       def test_html_script_tag():
-          result = sanitize_html("<script>alert('xss')</script>")
+          sanitizer = Sanitizer()
+          result = sanitizer.sanitize_html("<script>alert('xss')</script>")
           assert "<script>" not in result
           assert "alert" not in result or "&" in result
 
       def test_html_event_handler():
-          result = sanitize_html('<img onerror="alert(1)" src="x">')
+          sanitizer = Sanitizer()
+          result = sanitizer.sanitize_html('<img onerror="alert(1)" src="x">')
           assert "onerror" not in result or "onerror=" not in result
 
       def test_html_preserve_safe():
-          result = sanitize_html("Hello <b>World</b>")
-          # 安全なタグは保持しても良い
+          sanitizer = Sanitizer()
+          result = sanitizer.sanitize_html("Hello <b>World</b>")
+          # 安全なタグは保持しても良いが、ここでは単純に危険なものを除去できればOKとする
+          # 実装依存を避けるため、元のテキストが含まれているか確認
           assert "Hello" in result
           assert "World" in result
 
       def test_sql_quote_escape():
-          result = sanitize_sql("O'Brien")
+          sanitizer = Sanitizer()
+          result = sanitizer.sanitize_sql("O'Brien")
           assert "'" not in result or "''" in result or "\\'" in result
 
       def test_sql_semicolon():
@@ -2038,6 +2076,12 @@
     ```
 
     要件:
+    - クラス名: `Counter`
+    - メソッド:
+      - `increment()`
+      - `decrement()`
+      - `reset()`
+      - `get_value() -> int`
     - スレッドセーフにする
     - 複数スレッドから同時にincrementしても正確にカウント
   tests:
@@ -2107,15 +2151,16 @@
                     del self._listeners[event]
     ```
 
-    問題点:
-    - クラス変数でリスナーを共有している
-    - インスタンスを破棄してもリスナーが残る
+    要件:
+    - クラス名: `EventEmitter`
+    - メソッド:
+      - `on(event, callback)`
+      - `emit(event, *args)`
+      - `off(event, callback=None)`
+    - インスタンスごとにリスナーを管理する（クラス変数は禁止）
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import EventEmitter
-      except ImportError:
-          from solution import Emitter as EventEmitter
+      from solution import EventEmitter
 
       def test_basic_emit():
           emitter = EventEmitter()
@@ -2370,21 +2415,26 @@
 - id: py_agent_L3_state_machine
   lang: python
   prompt: |
-    汎用的な有限状態マシン（FSM）を実装してください。
+    有限ステートマシン（FSM）を実装してください。
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - 状態と遷移の定義
-    - 無効な遷移の検出
-    - 遷移時のコールバック
+    - クラス名: `StateMachine`
+    - メソッド:
+      - `add_state(name: str, on_enter=None, on_exit=None)`
+      - `add_transition(trigger: str, source: str, dest: str, condition=None)`
+      - `trigger(event: str)`
+      - `current_state` プロパティ
+    - 機能:
+      - 状態と遷移の定義
+      - イベント発火による遷移
+      - ガード条件
+      - 入退場アクション
 
     例: 注文のライフサイクル（pending → paid → shipped → delivered）
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import StateMachine
-      except ImportError:
-          from solution import FSM as StateMachine
+      from solution import StateMachine
 
       def test_basic_transition():
           sm = StateMachine(initial="pending")
@@ -2430,17 +2480,21 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - SELECT, WHERE, JOIN, ORDER BY をサポート
-    - メソッドチェーンで組み立て
-    - SQLインジェクション対策（プレースホルダー使用）
+    - クラス名: `QueryBuilder`
+    - メソッド:
+      - `select(table: str, columns: list[str] = None)`
+      - `where(condition: str, params: list = None)`
+      - `order_by(column: str, desc: bool = False)`
+      - `build() -> tuple[str, list]`
+    - 機能:
+      - SELECT文の構築
+      - メソッドチェーン
+      - パラメータバインディング（プレースホルダー）
 
     実際にDBに接続する必要はありません。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import QueryBuilder
-      except ImportError:
-          from solution import Query as QueryBuilder
+      from solution import QueryBuilder
 
       def test_simple_select():
           qb = QueryBuilder()
@@ -2826,18 +2880,32 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - イベントの記録と再生
-    - 集約（Aggregate）の状態復元
-    - イベントストアの実装
+    - クラス名: `EventStore`
+    - メソッド:
+      - `append(stream_id: str, event: dict)`
+      - `get_events(stream_id: str) -> list[dict]`
+    - クラス名: `Aggregate`
+      - `apply(event: dict)`
+      - `replay(events: list[dict])`
+      - `from_events(events: list[dict])` (classmethod or staticmethod)
+    - 機能:
+      - イベントの記録と再生
+      - 集約（Aggregate）の状態復元
+      - イベントストアの実装
 
     例: 銀行口座の入出金履歴からcurrent balanceを再構築
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import EventStore, BankAccount
-      except ImportError:
-          from solution import EventStore
-          BankAccount = None
+      from solution import EventStore, Aggregate
+
+      class BankAccount(Aggregate):
+          def __init__(self):
+              self.balance = 0
+          def apply(self, event):
+              if event["type"] == "deposited":
+                  self.balance += event["amount"]
+              elif event["type"] == "withdrawn":
+                  self.balance -= event["amount"]
 
       def test_record_event():
           store = EventStore()
@@ -2884,25 +2952,22 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - タスクの定義と依存関係
-    - 並列実行可能なタスクの検出
-    - 失敗時のリトライ/スキップ/中断戦略
-    - 実行状態の追跡
+    - クラス名: `Workflow`
+    - メソッド:
+      - `add_task(name: str, func: Callable, depends_on: list[str] = [], retries: int = 0)`
+      - `run()`
+      - `get_status(name: str) -> TaskStatus`
+    - 列挙型: `TaskStatus` (PENDING, RUNNING, COMPLETED, FAILED, SKIPPED)
+    - 機能:
+      - タスクの定義と依存関係
+      - 並列実行可能なタスクの検出
+      - 失敗時のリトライ/スキップ/中断戦略
+      - 実行状態の追跡
 
     例: データパイプライン、CI/CDワークフロー
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import Workflow, Task, TaskStatus
-      except ImportError:
-          from solution import Workflow
-          Task = None
-          from enum import Enum
-          class TaskStatus(Enum):
-              PENDING = 0
-              RUNNING = 1
-              COMPLETED = 2
-              FAILED = 3
+      from solution import Workflow, TaskStatus
 
       def test_sequential_tasks():
           wf = Workflow()
@@ -2954,19 +3019,20 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - ルールの定義（条件 + アクション）
-    - ルールの優先度と競合解決
-    - ファクト（入力データ）に対するルール適用
-    - ルールチェーンの実行
+    - クラス名: `RuleEngine`
+    - メソッド:
+      - `add_rule(name: str, condition: Callable, action: Callable, priority: int = 0)`
+      - `run(facts: dict)`
+    - 機能:
+      - ルールの定義（条件 + アクション）
+      - ルールの優先度と競合解決
+      - ファクト（入力データ）に対するルール適用
+      - ルールチェーンの実行
 
     例: 保険の査定、ローン審査、割引適用
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import RuleEngine, Rule
-      except ImportError:
-          from solution import RuleEngine
-          Rule = None
+      from solution import RuleEngine
 
       def test_simple_rule():
           engine = RuleEngine()
@@ -3022,26 +3088,29 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - ロックの取得と解放
-    - タイムアウト付きの取得
-    - 自動期限切れ（TTL）
-    - ロック所有者の検証
+    - クラス名: `LockManager`
+    - メソッド:
+      - `acquire(resource: str, owner: str, ttl: float = 10) -> bool`
+      - `release(resource: str, owner: str) -> bool`
+    - 機能:
+      - ロックの取得と解放
+      - タイムアウト付きの取得
+      - 自動期限切れ（TTL）
+      - ロック所有者の検証
 
     注: 実際のネットワーク通信は不要。インメモリでの実装でOK。
     分散システムでの利用を想定した設計を意識してください。
   tests:
     tests/test_solution.py: |
       import time
-      from solution import DistributedLock, LockManager
+      from solution import LockManager
 
       def test_acquire_release():
           manager = LockManager()
-          lock = manager.acquire("resource-1", owner="client-a")
-          assert lock is not None
-          manager.release("resource-1", owner="client-a")
+          assert manager.acquire("resource-1", owner="client-a") is True
+          assert manager.release("resource-1", owner="client-a") is True
           # 解放後は他のクライアントが取得可能
-          lock2 = manager.acquire("resource-1", owner="client-b")
-          assert lock2 is not None
+          assert manager.acquire("resource-1", owner="client-b") is True
 
       def test_lock_contention():
           manager = LockManager()
@@ -3082,21 +3151,31 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - コマンドハンドラ（書き込み）
-    - クエリハンドラ（読み取り）
-    - コマンドとクエリの分離
-    - イベントによる読み取りモデルの更新
+    - クラス名: `CQRSApp`
+    - メソッド:
+      - `execute_command(command: Any) -> Any`
+      - `execute_query(query: Any) -> Any`
+    - 機能:
+      - コマンドとクエリの分離
+      - ハンドラーの自動ディスパッチ（型ベースまたは登録ベース）
 
     例: ユーザー登録（コマンド）とユーザー検索（クエリ）の分離
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import CQRSApp, CreateUserCommand, GetUserQuery, ListUsersQuery
-      except ImportError:
-          from solution import CQRSApp
-          CreateUserCommand = None
-          GetUserQuery = None
-          ListUsersQuery = None
+      from solution import CQRSApp
+
+      class CreateUserCommand:
+          def __init__(self, user_id, name, email):
+              self.user_id = user_id
+              self.name = name
+              self.email = email
+
+      class GetUserQuery:
+          def __init__(self, user_id):
+              self.user_id = user_id
+
+      class ListUsersQuery:
+          pass
 
       def test_create_user_command():
           app = CQRSApp()
@@ -3136,19 +3215,21 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - 複数ステップのトランザクション
-    - 各ステップの補償アクション（ロールバック）
-    - 失敗時の自動補償実行
-    - オーケストレーション型
+    - クラス名: `Saga`
+    - メソッド:
+      - `add_step(name: str, execute: Callable, compensate: Callable)`
+      - `run() -> void`
+      - `status` プロパティ
+    - 機能:
+      - 複数ステップのトランザクション
+      - 各ステップの補償アクション（ロールバック）
+      - 失敗時の自動補償実行
+      - オーケストレーション型
 
     例: 注文処理（在庫確保→決済→配送手配）
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import Saga, SagaStep
-      except ImportError:
-          from solution import Saga
-          SagaStep = None
+      from solution import Saga
 
       def test_successful_saga():
           results = []
@@ -3215,21 +3296,24 @@
     解説不要。Pythonコードのみ出力してください。
 
     要件:
-    - リクエストルーティング（パスベース）
-    - 認証/認可ミドルウェア
-    - レート制限
-    - レスポンス変換
-    - ヘルスチェックエンドポイント
+    - クラス名: `APIGateway`
+    - クラス名: `Request`, `Response`
+    - メソッド (`APIGateway`):
+      - `route(path: str, handler: Callable)`
+      - `use_auth(auth_func: Callable)`
+      - `rate_limit(max_requests: int, window_seconds: float)`
+      - `handle(req: Request) -> Response`
+    - 機能:
+      - リクエストルーティング（パスベース）
+      - 認証/認可ミドルウェア
+      - レート制限
+      - レスポンス変換
+      - ヘルスチェックエンドポイント
 
     実際のHTTPサーバーは不要。リクエストオブジェクトを受け取って処理。
   tests:
     tests/test_solution.py: |
-      try:
-          from solution import APIGateway, Request, Response
-      except ImportError:
-          from solution import APIGateway
-          Request = dict
-          Response = dict
+      from solution import APIGateway, Request, Response
 
       def test_route_registration():
           gw = APIGateway()
